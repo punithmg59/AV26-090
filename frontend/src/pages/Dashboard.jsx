@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, Brain, Activity, FileText, TrendingUp, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import useStore from '../store/useStore';
 import { getAnalyticsSummary, getRecentPredictions } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const { theme } = useStore();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isLight = theme === 'light';
   const [summary, setSummary] = useState(null);
@@ -43,7 +45,7 @@ export default function Dashboard() {
   ] : [];
 
   const quickActions = [
-    { label: 'Heart Disease Assessment', desc: 'Predict cardiac risk using ML', icon: Heart, color: 'text-red-500', path: '/heart' },
+    { label: 'Predictor', desc: 'Predict cardiac risk using ML', icon: Heart, color: 'text-red-500', path: '/predictor' },
     { label: 'Brain Tumor Detection', desc: 'Upload MRI for AI analysis', icon: Brain, color: 'text-purple-500', path: '/brain-tumor' },
     { label: 'View Reports', desc: 'Browse prediction history', icon: FileText, color: 'text-blue-500', path: '/history' },
   ];
@@ -62,8 +64,12 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div>
-        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Dashboard</h1>
-        <p className={`text-sm mt-1 ${muted}`}>Overview of your healthcare AI platform</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+          Welcome, {profile?.full_name || user?.email?.split('@')[0] || 'Member'}
+        </h1>
+        <p className={`text-sm mt-1 ${muted}`}>
+          {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, here's your health overview.
+        </p>
       </div>
 
       {/* Stats Cards */}

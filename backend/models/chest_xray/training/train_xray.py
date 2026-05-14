@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 import tensorflow as tf
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
@@ -30,13 +32,43 @@ def get_compiled_model(input_shape=(224, 224, 3), num_classes=2):
                   metrics=['accuracy'])
     return model
 
+def validate_dataset(data_dir):
+    data_path = Path(data_dir)
+    print(f"Dataset path: {data_path}")
+    
+    if not data_path.exists():
+        print(f"Error: Dataset directory does not exist at {data_path}")
+        return False
+        
+    required_dirs = ['train', 'val', 'test']
+    required_classes = ['NORMAL', 'PNEUMONIA']
+    
+    for split in required_dirs:
+        split_path = data_path / split
+        if not split_path.exists():
+            print(f"Error: Missing split directory '{split}' at: {split_path}")
+            return False
+            
+        for cls in required_classes:
+            cls_path = split_path / cls
+            if not cls_path.exists():
+                print(f"Error: Missing class directory '{cls}' at: {cls_path}")
+                return False
+                
+            if not any(cls_path.iterdir()):
+                print(f"Error: Empty class directory: {cls_path}")
+                return False
+                
+    print("Dataset validation passed successfully.")
+    return True
+
 def train_model(data_dir, output_dir, epochs=20, batch_size=32):
+    if not validate_dataset(data_dir):
+        print("Dataset validation failed. Aborting training.")
+        return None
+        
     train_dir = os.path.join(data_dir, 'train')
     val_dir = os.path.join(data_dir, 'val')
-    
-    if not os.path.exists(train_dir) or not os.path.exists(val_dir):
-        print(f"Dataset directories not found in {data_dir}. Ensure 'train' and 'val' exist.")
-        return None
         
     train_datagen = ImageDataGenerator(
         rescale=1./255,
@@ -109,6 +141,9 @@ def train_model(data_dir, output_dir, epochs=20, batch_size=32):
     return model
 
 if __name__ == '__main__':
-    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../datasets/chest_xray'))
-    out_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../saved'))
-    train_model(data_dir, out_dir)
+    # Proper BASE_DIR resolution
+    BASE_DIR = Path(__file__).resolve().parents[3]
+    DATASET_DIR = BASE_DIR / "datasets" / "chest_xray"
+    OUTPUT_DIR = Path(__file__).resolve().parents[1] / "saved"
+    
+    train_model(str(DATASET_DIR), str(OUTPUT_DIR))

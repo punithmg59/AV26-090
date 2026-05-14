@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import tensorflow as tf
-from .preprocess_xray import preprocess_image
+from models.chest_xray.prediction.preprocess_xray import preprocess_image
 
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     """

@@ -10,7 +10,7 @@ import useStore from '../store/useStore';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Heart, label: 'Heart Disease', path: '/heart' },
+  { icon: Heart, label: 'Predictor', path: '/predictor' },
   { icon: Brain, label: 'Brain Tumor', path: '/brain-tumor' },
   { icon: FileText, label: 'Reports History', path: '/history' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },

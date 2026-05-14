@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from ..training.metrics import get_metrics
+from models.chest_xray.training.metrics import get_metrics
 
 def evaluate_model(model_path, test_data_dir, batch_size=32):
     """
