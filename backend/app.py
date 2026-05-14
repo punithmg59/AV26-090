@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.heart_routes import router as heart_router
 from routes.history_routes import router as history_router
 from routes.analytics_routes import router as analytics_router
+from routes.xray_routes import router as xray_router
+
 
 app = FastAPI(
     title="Healthcare AI API",
@@ -29,6 +31,8 @@ app.add_middleware(
 app.include_router(heart_router)
 app.include_router(history_router)
 app.include_router(analytics_router)
+app.include_router(xray_router)
+
 
 # =========================
 # ROOT

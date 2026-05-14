@@ -5,7 +5,7 @@ from database.database import SessionLocal
 from database.db_models import ChestXrayPrediction
 from models.chest_xray.prediction.predict_xray import XrayPredictor
 from models.chest_xray.visualization.gradcam_xray import generate_heatmap
-from services.groq_service import generate_medical_report
+from responses.groq_service import generate_medical_report
 
 # Initialize Predictor
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../models/chest_xray/saved'))
@@ -60,8 +60,10 @@ async def process_chest_xray(file: UploadFile):
         "findings": f"Model detected features consistent with {pred_class}."
     }
     
+    from responses.report_validator import sanitize_report
     # Customize groq service or use a specific prompt if needed
-    report_json = generate_medical_report(report_input) 
+    raw_report_json = generate_medical_report(report_input) 
+    report_json = sanitize_report(raw_report_json, report_input)
     
     # 6. Save to Database
     db = SessionLocal()
