@@ -7,14 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#4F46E5",
-        secondary: "#6366F1",
-        background: "#F9FAFB",
-        surface: "#FFFFFF",
-        textMain: "#111827",
-        textMuted: "#6B7280",
-        border: "#E5E7EB",
-      }
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        surface: "rgba(15, 23, 42, 0.6)",
+      },
+      borderRadius: {
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
+      animation: {
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
     },
   },
   plugins: [],

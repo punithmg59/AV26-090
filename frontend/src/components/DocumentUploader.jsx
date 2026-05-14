@@ -1,287 +1,192 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, File, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import { 
+  UploadCloud, 
+  File, 
+  X, 
+  CheckCircle2, 
+  Clock,
+  Eye,
+  Download,
+  MoreVertical,
+  FileText
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
+const recentFiles = [
+  { id: 1, name: 'brain_mri_scan.pdf', size: '2.4 MB', type: 'MRI', date: '2 hours ago', status: 'completed' },
+  { id: 2, name: 'blood_report_may.pdf', size: '1.2 MB', type: 'Lab', date: '5 hours ago', status: 'completed' },
+  { id: 3, name: 'chest_xray.jpg', size: '4.8 MB', type: 'X-Ray', date: 'Yesterday', status: 'completed' },
+];
 
 export default function DocumentUploader({ onFilesSelected }) {
+  const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState([]);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
 
-  const SUPPORTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-  const SUPPORTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-  const validateFile = (file) => {
-    if (!SUPPORTED_TYPES.includes(file.type) && 
-        !SUPPORTED_EXTENSIONS.includes(`.${file.name.split('.').pop().toLowerCase()}`)) {
-      return { valid: false, error: 'Unsupported file type. Please upload PDF, JPG, PNG, or JPEG.' };
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return { valid: false, error: 'File size exceeds 10MB limit.' };
-    }
-    return { valid: true };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
   };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
+  const handleDragLeave = () => {
+    setIsDragging(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
+    setIsDragging(false);
     const droppedFiles = Array.from(e.dataTransfer.files);
-    processFiles(droppedFiles);
+    addFiles(droppedFiles);
   };
 
-  const processFiles = (fileList) => {
-    const newFiles = [];
-
-    for (let file of fileList) {
-      const validation = validateFile(file);
-      if (validation.valid) {
-        newFiles.push({
-          id: Math.random().toString(36).substr(2, 9),
-          file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          progress: 0,
-          status: 'pending',
-        });
-      } else {
-        alert(validation.error);
-      }
-    }
-
-    setFiles(prev => [...prev, ...newFiles]);
-    if (onFilesSelected) {
-      onFilesSelected([...files, ...newFiles].map(f => f.file));
-    }
-  };
-
-  const handleFileChange = (e) => {
+  const handleFileInput = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    processFiles(selectedFiles);
+    addFiles(selectedFiles);
+  };
+
+  const addFiles = (newFiles) => {
+    const processedFiles = newFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+      type: file.type.split('/')[1]?.toUpperCase() || 'FILE',
+      status: 'uploading',
+      progress: 0,
+      originalFile: file
+    }));
+    
+    setFiles(prev => [...prev, ...processedFiles]);
+    onFilesSelected(newFiles);
+
+    // Simulate upload progress
+    processedFiles.forEach(file => {
+      let prog = 0;
+      const interval = setInterval(() => {
+        prog += Math.random() * 30;
+        if (prog >= 100) {
+          prog = 100;
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, progress: 100, status: 'completed' } : f));
+          clearInterval(interval);
+        } else {
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, progress: prog } : f));
+        }
+      }, 400);
+    });
   };
 
   const removeFile = (id) => {
-    const updatedFiles = files.filter(f => f.id !== id);
-    setFiles(updatedFiles);
-    if (onFilesSelected) {
-      onFilesSelected(updatedFiles.map(f => f.file));
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const getFileIcon = (file) => {
-    const ext = file.name.split('.').pop().toLowerCase();
-    switch (ext) {
-      case 'pdf':
-        return '📄';
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return '🖼️';
-      default:
-        return '📋';
-    }
+    setFiles(prev => prev.filter(f => f.id !== id));
   };
 
   return (
-    <div className="w-full space-y-6">
-      {/* Header */}
-      <div>
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">Upload Medical Reports</h3>
-        <p className="text-sm text-slate-600">Upload MRI, ECG, blood reports, scans, or medical documents</p>
-      </div>
-
-      {/* Drag and Drop Zone */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-2xl p-8 md:p-12 transition-all duration-300 cursor-pointer group ${
-          dragActive
-            ? 'border-purple-500 bg-purple-50 shadow-lg scale-[1.02]'
-            : 'border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50/30'
-        }`}
-      >
-        {/* Animated Background Glow */}
-        <div
-          className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
-            dragActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
-          }`}
-          style={{
-            background:
-              'radial-gradient(circle at center, rgba(168, 85, 247, 0.05) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Content */}
-        <div className="relative flex flex-col items-center justify-center text-center space-y-4">
-          <div
-            className={`transition-transform duration-300 ${
-              dragActive ? 'scale-125' : 'group-hover:scale-110'
-            }`}
-          >
-            <Upload
-              size={48}
-              className={`transition-colors duration-300 ${
-                dragActive ? 'text-purple-600' : 'text-slate-400 group-hover:text-purple-500'
-              }`}
-            />
-          </div>
-
+    <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-lg font-semibold text-slate-900">
-              {dragActive ? 'Drop files here' : 'Drag and drop files here'}
-            </p>
-            <p className="text-sm text-slate-600 mt-1">
-              {dragActive ? '' : 'or click to select files'}
-            </p>
+            <h2 className="text-xl font-bold text-white flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                <UploadCloud size={18} className="text-primary" />
+              </div>
+              Upload Medical Documents
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">Add MRI, X-Ray, or blood reports for AI analysis</p>
           </div>
-
-          <div className="flex flex-wrap gap-2 justify-center pt-2">
-            {SUPPORTED_EXTENSIONS.map((ext) => (
-              <span
-                key={ext}
-                className="px-3 py-1 text-xs font-medium bg-white text-slate-700 rounded-full border border-slate-200"
-              >
-                {ext.toUpperCase()}
-              </span>
-            ))}
-          </div>
-
-          <p className="text-xs text-slate-500 pt-2">Max file size: 10MB</p>
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={SUPPORTED_TYPES.join(',')}
-          onChange={handleFileChange}
-          className="hidden"
-        />
+        <motion.div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "relative group border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center transition-all duration-300 min-h-[220px]",
+            isDragging ? "border-primary bg-primary/5" : "border-white/10 hover:border-white/20 bg-slate-900/40"
+          )}
+        >
+          <input 
+            type="file" 
+            multiple 
+            onChange={handleFileInput}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+          
+          <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+            <UploadCloud className={cn("text-slate-400 transition-colors", isDragging ? "text-primary" : "group-hover:text-white")} size={32} />
+          </div>
+          <p className="text-white font-semibold">Drag & drop files here</p>
+          <p className="text-slate-500 text-sm mt-1">Supports PDF, JPG, PNG, DICOM (Max 50MB)</p>
+          
+          <button className="mt-6 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-medium transition-all">
+            Browse Files
+          </button>
+        </motion.div>
       </div>
 
-      {/* File List */}
-      {files.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-700">
-              {files.length} file{files.length !== 1 ? 's' : ''} selected
-            </p>
-            <span className="text-xs text-slate-500">
-              Total: {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))}
-            </span>
-          </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider opacity-50">Recent Documents</h3>
+          <button className="text-xs font-bold text-primary hover:underline">View All</button>
+        </div>
 
-          {/* File Cards */}
-          <div className="grid gap-3 md:grid-cols-2">
-            {files.map((fileItem) => (
-              <div
-                key={fileItem.id}
-                className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all duration-300 group"
+        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+          <AnimatePresence mode="popLayout">
+            {files.map((file) => (
+              <motion.div
+                key={file.id}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-4 group"
               >
-                {/* Icon */}
-                <div className="flex-shrink-0 text-2xl mt-1">
-                  {getFileIcon(fileItem.file)}
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
+                  {file.status === 'completed' ? <CheckCircle2 size={20} className="text-emerald-500" /> : <Clock size={20} className="text-amber-500 animate-pulse" />}
                 </div>
-
-                {/* File Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">
-                    {fileItem.name}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {formatFileSize(fileItem.size)}
-                  </p>
-
-                  {/* Status Badge */}
-                  <div className="mt-2 flex items-center gap-1">
-                    {fileItem.status === 'pending' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">
-                        Ready
-                      </span>
-                    )}
-                    {fileItem.status === 'uploading' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-medium flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
-                        Uploading
-                      </span>
-                    )}
-                    {fileItem.status === 'processing' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-medium flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
-                        Processing
-                      </span>
-                    )}
-                    {fileItem.status === 'success' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 font-medium flex items-center gap-1">
-                        <CheckCircle size={12} />
-                        Processed
-                      </span>
-                    )}
-                    {fileItem.status === 'error' && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 font-medium flex items-center gap-1">
-                        <AlertCircle size={12} />
-                        Error
-                      </span>
-                    )}
+                  <p className="text-sm font-medium text-white truncate">{file.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{file.type}</span>
+                    <span className="text-[11px] text-slate-500">{file.size}</span>
                   </div>
+                  {file.status === 'uploading' && (
+                    <div className="w-full h-1 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${file.progress}%` }}
+                        className="h-full bg-primary" 
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {/* Remove Button */}
-                <button
-                  onClick={() => removeFile(fileItem.id)}
-                  className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  title="Remove file"
+                <button 
+                  onClick={() => removeFile(file.id)}
+                  className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </AnimatePresence>
 
-          {/* Progress Bar (Optional - shown when uploading) */}
-          {files.some((f) => f.status === 'uploading' || f.status === 'processing') && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-600">Processing documents...</p>
-              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 animate-pulse" />
+          {files.length === 0 && recentFiles.map((file) => (
+            <div key={file.id} className="p-4 rounded-2xl bg-slate-900/40 border border-white/5 flex items-center gap-4 group hover:bg-slate-900/60 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                <FileText size={20} className="text-slate-400 group-hover:text-primary transition-colors" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{file.name}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">{file.date} • {file.size}</p>
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><Eye size={14} /></button>
+                <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"><Download size={14} /></button>
               </div>
             </div>
-          )}
+          ))}
         </div>
-      )}
-
-      {/* Info Box */}
-      <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
-        <p className="text-sm font-medium text-blue-900 flex items-center gap-2">
-          <span className="text-base">ℹ️</span>
-          <span>Supporting Document Types</span>
-        </p>
-        <ul className="text-xs text-blue-800 space-y-1 ml-6">
-          <li>• Blood Reports (cholesterol, glucose, etc.)</li>
-          <li>• ECG Reports & Images</li>
-          <li>• X-ray & CT Scan Images</li>
-          <li>• MRI Reports & Scans</li>
-          <li>• Lab Work Documents</li>
-        </ul>
       </div>
     </div>
   );

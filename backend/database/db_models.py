@@ -66,3 +66,29 @@ class HeartPrediction(Base):
     emergency = Column(Boolean)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+# =========================
+# CHEST X-RAY PREDICTIONS TABLE
+# =========================
+
+class ChestXrayPrediction(Base):
+
+    __tablename__ = "chest_xray_predictions"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, default=1)
+
+    prediction = Column(String)
+
+    confidence = Column(Float)
+
+    risk_level = Column(String)
+
+    image_path = Column(String)
+
+    heatmap_path = Column(String)
+
+    report = Column(String)
+
+    created_at = Column(DateTime, default=datetime.utcnow)

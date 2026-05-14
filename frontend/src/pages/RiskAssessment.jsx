@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import useStore from '../store/useStore';
+import { predictHeart } from '../services/api';
+
 import BodySelector from '../components/BodySelector';
 import MedicalForm from '../components/MedicalForm';
 import DocumentUploader from '../components/DocumentUploader';
@@ -9,112 +11,65 @@ export default function RiskAssessment() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { theme, formData, setFormData, selectedAreas, uploadedFiles, setUploadedFiles } = useStore();
+  const isLight = theme === 'light';
 
-  const [formData, setFormData] = useState({
-    age: 19, sex: 1, cp: 2, trestbps: 148, chol: 245,
-    fbs: 1, thalach: 158, exang: 1, smoking: 1,
-    stress_level: 8, short_breath: 1, fatigue: 1,
-    chest_location: 1, left_arm_pain: 1, pain_severity: 3
-  });
-
-  const [selectedAreas, setSelectedAreas] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const card = isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-slate-900 border border-slate-800';
 
   useEffect(() => {
-    // Detect chest pain from any chest-related body part key
-    const chestSelected = selectedAreas.some(a =>
-      a.includes('chest') || a === 'upper_abdomen'
-    ) ? 1 : 0;
-    // Detect left arm pain from arm-related keys
-    const leftArmSelected = selectedAreas.some(a =>
-      a === 'left_arm' || a === 'left_forearm' || a === 'left_upper_arm'
-    ) ? 1 : 0;
-
-    setFormData(prev => ({
-      ...prev,
-      chest_location: chestSelected,
-      left_arm_pain: leftArmSelected
-    }));
-  }, [selectedAreas]);
-
-  const toggleArea = (area) => {
-    setSelectedAreas(prev => 
-      prev.includes(area) 
-        ? prev.filter(a => a !== area)
-        : [...prev, area]
-    );
-  };
+    const chestSelected = selectedAreas.some(a => a.includes('chest') || a === 'upper_abdomen') ? 1 : 0;
+    const leftArmSelected = selectedAreas.some(a => a === 'left_arm' || a === 'left_forearm' || a === 'left_upper_arm') ? 1 : 0;
+    setFormData({ chest_location: chestSelected, left_arm_pain: leftArmSelected });
+  }, [selectedAreas, setFormData]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     setLoading(true);
     setError(null);
-    
     try {
-      // Prepare form data with multipart/form-data
-      const formDataPayload = new FormData();
-      
-      // Add form fields
+      const payload = new FormData();
       for (const key in formData) {
-        formDataPayload.append(key, Number(formData[key]));
+        payload.append(key, Number(formData[key]));
       }
-      
-      // Add pain areas
-      formDataPayload.append('pain_areas', JSON.stringify(selectedAreas));
-      
-      // Add uploaded files
-      uploadedFiles.forEach((file, index) => {
-        formDataPayload.append(`documents`, file);
-      });
-      
-      const response = await axios.post(
-        "http://127.0.0.1:8000/predict-heart-multimodal",
-        formDataPayload,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      
+      payload.append('pain_areas', JSON.stringify(selectedAreas));
+      uploadedFiles.forEach((file) => payload.append('documents', file));
+
+      const response = await predictHeart(payload);
       navigate('/report', { state: { result: response.data } });
     } catch (err) {
-      console.error(err);
-      const errorMessage = err.response?.data?.detail || "Failed to process prediction.";
-      alert(`Error: ${errorMessage}`);
-      setError(errorMessage);
+      setError(err.response?.data?.detail || 'Failed to process prediction.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 min-h-full w-full max-w-[1600px] mx-auto">
-      {/* Top Section: Form and Body Selector */}
-      <div className="flex flex-col lg:flex-row gap-6 w-full">
-        {/* Larger space for the 3D model */}
-        <div className="w-full lg:w-[60%] xl:w-[65%] min-h-[600px] flex flex-col shrink-0">
-          <BodySelector selectedAreas={selectedAreas} toggleArea={toggleArea} />
-        </div>
-        
-        <div className="w-full lg:flex-1 flex flex-col">
-          <MedicalForm 
-            formData={formData} 
-            setFormData={setFormData} 
-            onSubmit={handleSubmit} 
-            loading={loading} 
-          />
-        </div>
+    <div className="max-w-[1600px] mx-auto space-y-6">
+      <div>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Heart Disease Assessment</h1>
+        <p className={`text-sm mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>Enter your health data for AI-powered cardiac risk prediction</p>
       </div>
 
-      {/* Document Upload Section */}
-      <div className="w-full bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+      {/* Upload Section */}
+      <div className={`${card} rounded-xl p-6`}>
         <DocumentUploader onFilesSelected={setUploadedFiles} />
       </div>
 
-      {/* Error Message */}
+      {/* Main Grid: Form (Left) + 3D Body (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5">
+          <div className={`${card} rounded-xl p-6`}>
+            <MedicalForm onSubmit={handleSubmit} loading={loading} />
+          </div>
+        </div>
+        <div className="lg:col-span-7">
+          <BodySelector />
+        </div>
+      </div>
+
+      {/* Error */}
       {error && (
-        <div className="w-full p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+        <div className={`p-4 rounded-xl text-sm ${isLight ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
           {error}
         </div>
       )}

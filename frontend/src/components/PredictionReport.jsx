@@ -4,21 +4,25 @@ import {
   ArrowRight, ShieldAlert, FileText, Zap, BarChart3, Heart, 
   Stethoscope, Thermometer, Brain, TrendingDown, ClipboardCheck,
   AlertCircle, Sparkles, Map, Leaf, Scale, Download, Share2, 
-  PhoneCall, Clock, Moon, Droplets, Cigarette, Wind, MoreHorizontal
+  PhoneCall, Clock, Moon, Droplets, Cigarette, Wind, MoreHorizontal,
+  ChevronRight
 } from 'lucide-react';
-import clsx from 'clsx';
+import { motion, AnimatePresence } from 'framer-motion';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
 
 export default function PredictionReport({ result, onBack }) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    console.log("Full Backend Response Received:", result);
     setIsVisible(true);
     window.scrollTo(0, 0);
   }, [result]);
 
-  // ─── Dynamic Data Extraction ───
-  // Use keys provided by backend: risk_level, risk_score, symptoms, selected_pain_areas, llm_report
   const riskScore = result?.risk_score || 0;
   const riskLevel = result?.risk_level || 'Unknown';
   const isEmergency = result?.emergency || riskScore >= 85;
@@ -30,289 +34,284 @@ export default function PredictionReport({ result, onBack }) {
   const symptoms = result?.symptoms || [];
   const painAreas = result?.selected_pain_areas || [];
 
-  // ─── Theme Mapping ───
   const getRiskTheme = () => {
     if (isHighRisk) return {
-      text: 'text-red-600',
-      bg: 'bg-red-50',
-      border: 'border-red-100',
-      accent: 'bg-red-600',
-      lightAccent: 'bg-red-100',
-      label: 'High Risk',
-      icon: <AlertCircle className="text-red-600" size={28} />
+      text: 'text-red-400',
+      bg: 'bg-red-500/10',
+      border: 'border-red-500/30',
+      shadow: 'shadow-[0_0_30px_rgba(239,68,68,0.2)]',
+      accent: 'bg-red-500',
+      label: 'High Risk Alert',
+      icon: <AlertCircle className="text-red-400" size={32} />
     };
     if (isModerateRisk) return {
-      text: 'text-orange-600',
-      bg: 'bg-orange-50',
-      border: 'border-orange-100',
-      accent: 'bg-orange-500',
-      lightAccent: 'bg-orange-100',
-      label: 'Moderate Risk',
-      icon: <AlertTriangle className="text-orange-600" size={28} />
+      text: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/30',
+      shadow: 'shadow-[0_0_30px_rgba(245,158,11,0.2)]',
+      accent: 'bg-amber-500',
+      label: 'Moderate Monitoring',
+      icon: <AlertTriangle className="text-amber-400" size={32} />
     };
     return {
-      text: 'text-emerald-600',
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-100',
+      text: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/30',
+      shadow: 'shadow-[0_0_30px_rgba(16,185,129,0.2)]',
       accent: 'bg-emerald-500',
-      lightAccent: 'bg-emerald-100',
-      label: 'Low Risk',
-      icon: <CheckCircle className="text-emerald-600" size={28} />
+      label: 'Optimal Health',
+      icon: <CheckCircle className="text-emerald-400" size={32} />
     };
   };
 
   const theme = getRiskTheme();
 
   return (
-    <div className={clsx(
-      "min-h-screen bg-white pb-20 transition-all duration-700 font-sans text-slate-800",
-      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-    )}>
-      {/* ─── Navigation Header ─── */}
-      <header className="max-w-5xl mx-auto px-6 py-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onBack}
-            className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Your Health Report</h1>
-            <p className="text-slate-500 text-sm mt-1 font-medium italic">
-              AI Analysis • {new Date().toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition shadow-sm">
-            <Download size={16} /> PDF
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition shadow-md">
-            <Share2 size={16} /> Share Report
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 space-y-6">
-        
-        {/* ─── 1. HEALTH RESULT CARD ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className={clsx("border rounded-[2.5rem] p-8 shadow-sm flex flex-col", theme.bg, theme.border)}>
-            <div className="flex items-start justify-between mb-8">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Calculated Risk Level</span>
-                <h2 className={clsx("text-4xl font-black tracking-tight", theme.text)}>
+    <div className="space-y-8 pb-20">
+      {/* ─── 1. TOP RESULT CARDS ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Main Risk Card */}
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className={cn(
+            "lg:col-span-7 glass-card rounded-[2.5rem] p-10 border relative overflow-hidden",
+            theme.bg, theme.border, theme.shadow
+          )}
+        >
+          <div className={cn("absolute top-0 right-0 w-64 h-64 opacity-20 rounded-full blur-[100px] -mr-32 -mt-32", theme.accent)} />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
+                {theme.icon}
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Diagnostic Outcome</span>
+                <h2 className={cn("text-4xl font-black tracking-tight mt-1", theme.text)}>
                   {riskLevel}
                 </h2>
               </div>
-              <div className="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center">
-                {theme.icon}
-              </div>
             </div>
 
-            <div className="space-y-4 mb-8">
-              <div className="flex items-end justify-between text-sm">
-                <span className="font-bold text-slate-700">Health Probability Score</span>
-                <span className="font-bold text-slate-400">{riskScore} / 100</span>
+            <div className="space-y-6 mb-10">
+              <div className="flex items-end justify-between">
+                <span className="text-sm font-bold text-slate-300">Cardiac Risk Intensity</span>
+                <span className="text-2xl font-black text-white">{riskScore}%</span>
               </div>
-              <div className="w-full h-4 bg-white/50 border border-slate-100 rounded-full overflow-hidden p-1">
-                <div 
-                  className={clsx("h-full transition-all duration-1000 ease-out rounded-full", theme.accent)} 
-                  style={{ width: `${riskScore}%` }}
+              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${riskScore}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className={cn("h-full rounded-full shadow-[0_0_15px_rgba(255,255,255,0.2)]", theme.accent)} 
                 />
               </div>
             </div>
 
-            <p className="text-slate-700 text-lg leading-relaxed font-semibold italic">
-              "{llm.how_serious || 'Assessment completed successfully.'}"
-            </p>
-          </div>
-
-          {/* Key Indicators Card */}
-          <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm h-full">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Biometric Markers</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <MarkerCard label="BP" value={ocr.blood_pressure || '120/80'} icon={<Activity size={16} />} />
-              <MarkerCard label="Cholesterol" value={ocr.cholesterol ? `${ocr.cholesterol} mg/dL` : 'Normal'} icon={<Droplets size={16} />} />
-              <MarkerCard label="Heart Rate" value={ocr.heart_rate ? `${ocr.heart_rate} bpm` : '72 bpm'} icon={<HeartPulse size={16} />} />
-              <MarkerCard label="Glucose" value={ocr.glucose ? `${ocr.glucose} mg/dL` : 'Normal'} icon={<Zap size={16} />} />
-            </div>
-            <div className="mt-6 pt-6 border-t border-slate-100">
-               <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                 {llm.why_happened || "Analyzing risk factors based on provided clinical data."}
-               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── 2. WHAT'S HAPPENING? ─── */}
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/30 blur-3xl rounded-full -mr-20 -mt-20" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
-            <div className="w-48 h-48 shrink-0 bg-slate-50 rounded-[3rem] border border-slate-100 flex items-center justify-center p-8 group">
-               <img src="https://img.icons8.com/color/240/heart-with-pulse.png" alt="Heart Visualization" className="w-full h-auto group-hover:scale-110 transition-transform duration-500" />
-            </div>
-            <div className="space-y-6">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                <Brain className="text-indigo-500" />
-                What's Happening Inside?
-              </h3>
-              <p className="text-xl text-slate-600 leading-relaxed font-medium">
-                {llm.what_happened || "Analysis in progress..."}
+            <div className="p-6 rounded-3xl bg-white/5 border border-white/5">
+              <p className="text-slate-200 text-lg leading-relaxed font-medium italic">
+                "{llm.how_serious || 'Assessment complete. Analyzing clinical markers...'}"
               </p>
-              <div className="flex flex-wrap gap-2">
-                 {llm.ai_insights?.map((insight, idx) => (
-                    <div key={idx} className="px-4 py-2 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 flex items-center gap-2">
-                       <Sparkles size={12} /> {insight}
-                    </div>
-                 ))}
-              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* ─── 3. WHY THIS MAY BE HAPPENING ─── */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-bold text-slate-900 px-4">Dynamic Risk Drivers</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {llm.risk_factors?.map((factor, idx) => (
-              <div key={idx} className="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-md transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:bg-indigo-50 transition-colors">
-                  <Activity size={20} className="text-slate-400 group-hover:text-indigo-500" />
-                </div>
-                <h4 className="font-bold text-slate-800 text-lg mb-1">{factor}</h4>
-                <p className="text-sm text-slate-500 font-medium">Contributing factor detected in analysis.</p>
-              </div>
-            )) || (
-              <p className="col-span-4 text-slate-400 italic text-center py-8">No specific risk drivers found.</p>
-            )}
-          </div>
-        </div>
-
-        {/* ─── 4. WHAT SHOULD YOU DO NEXT? & 5. EMERGENCY ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Biometric Markers Panel */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="lg:col-span-5 glass-card rounded-[2.5rem] p-10 border border-white/5 flex flex-col"
+        >
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-2">
+            <Activity size={14} className="text-primary" />
+            Biometric Link Analysis
+          </h3>
           
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
-            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-              <ClipboardCheck className="text-emerald-500" />
-              Your Action Plan
-            </h3>
-            <div className="space-y-4">
-              {llm.next_steps?.map((step, idx) => (
-                <div key={idx} className="flex items-center justify-between p-5 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-emerald-300 hover:bg-white transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm shrink-0">
-                      {idx + 1}
-                    </div>
-                    <span className="font-bold text-slate-700 text-base">{step}</span>
-                  </div>
-                  <ArrowRight size={18} className="text-slate-200 group-hover:text-emerald-500 transition-colors" />
-                </div>
-              )) || (
-                <p className="text-slate-400 italic">No recommendations provided.</p>
-              )}
-            </div>
-            <div className="mt-8 p-6 rounded-3xl bg-emerald-50/50 border border-emerald-100">
-               <p className="text-emerald-800 font-semibold italic text-center">
-                 "{llm.improvement_potential || 'Maintaining a healthy lifestyle can improve these results.'}"
-               </p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 flex-1">
+            <MarkerCard label="Resting BP" value={ocr.blood_pressure || '120/80'} icon={<Droplets size={18} className="text-blue-400" />} />
+            <MarkerCard label="Cholesterol" value={ocr.cholesterol ? `${ocr.cholesterol} mg/dL` : 'Normal'} icon={<Activity size={18} className="text-emerald-400" />} />
+            <MarkerCard label="Heart Rate" value={ocr.heart_rate ? `${ocr.heart_rate} bpm` : '72 bpm'} icon={<HeartPulse size={18} className="text-red-400" />} />
+            <MarkerCard label="Glucose" value={ocr.glucose ? `${ocr.glucose} mg/dL` : 'Optimal'} icon={<Zap size={18} className="text-amber-400" />} />
           </div>
 
-          {/* 5. EMERGENCY WARNING */}
-          { (isEmergency || isHighRisk || isModerateRisk) && (
-            <div className={clsx(
-              "lg:col-span-5 rounded-[2.5rem] p-8 shadow-lg flex flex-col justify-between",
-              isHighRisk ? "bg-red-50 border border-red-100" : "bg-orange-50 border border-orange-100"
-            )}>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className={clsx(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                    isHighRisk ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"
-                  )}>
-                    <AlertCircle size={28} />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className={clsx("text-2xl font-black tracking-tight", isHighRisk ? "text-red-800" : "text-orange-800")}>
-                      Urgent Warning
-                    </h3>
-                    <p className={clsx("text-sm font-bold opacity-80", isHighRisk ? "text-red-600" : "text-orange-600")}>
-                      {llm.emergency_warning || "Please monitor your symptoms closely."}
-                    </p>
-                  </div>
-                </div>
+          <div className="mt-8 pt-8 border-t border-white/5">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                <Brain size={16} className="text-primary" />
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed italic">
+                {llm.why_happened || "Analyzing systemic correlations between biomarkers."}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
-                <div className="space-y-3">
-                   <EmergencySymptom label="Chest Pain" active={symptoms.some(s => s.toLowerCase().includes('chest'))} />
-                   <EmergencySymptom label="Shortness of Breath" active={symptoms.some(s => s.toLowerCase().includes('breath'))} />
-                   <EmergencySymptom label="Fainting or Dizziness" active={true} />
+      {/* ─── 2. WHAT'S HAPPENING? ─── */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card rounded-[2.5rem] p-10 border border-white/5 relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-primary/5 via-transparent to-indigo-500/5" />
+        <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+          <div className="w-48 h-48 shrink-0 relative group">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative w-full h-full bg-slate-900/80 rounded-[3.5rem] border border-white/10 flex items-center justify-center p-10 shadow-2xl">
+              <Heart className="w-full h-full text-red-500 animate-pulse" />
+            </div>
+          </div>
+          <div className="flex-1 space-y-6 text-center md:text-left">
+            <h3 className="text-3xl font-black text-white tracking-tight flex items-center justify-center md:justify-start gap-4">
+              <Sparkles className="text-primary" />
+              Physiological Insights
+            </h3>
+            <p className="text-xl text-slate-300 leading-relaxed font-medium max-w-3xl">
+              {llm.what_happened || "Processing medical report insights..."}
+            </p>
+            <div className="flex flex-wrap justify-center md:justify-start gap-3">
+              {llm.ai_insights?.map((insight, idx) => (
+                <div key={idx} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 text-xs font-bold border border-white/5 flex items-center gap-2 hover:bg-white/10 transition-colors">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {insight}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── 3. ACTION PLAN & EMERGENCY ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-7 glass-card rounded-[2.5rem] p-10 border border-white/5"
+        >
+          <h3 className="text-2xl font-black text-white mb-10 flex items-center gap-4">
+            <ClipboardCheck className="text-emerald-400" />
+            Neural Action Protocol
+          </h3>
+          <div className="space-y-4">
+            {llm.next_steps?.map((step, idx) => (
+              <div key={idx} className="flex items-center justify-between p-6 bg-white/5 border border-white/5 rounded-[2rem] group hover:bg-white/10 hover:border-emerald-500/30 transition-all duration-300">
+                <div className="flex items-center gap-5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-sm">
+                    0{idx + 1}
+                  </div>
+                  <span className="font-bold text-slate-200 text-lg">{step}</span>
+                </div>
+                <ChevronRight size={20} className="text-slate-600 group-hover:text-emerald-400 transition-colors" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 p-8 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-center">
+             <p className="text-emerald-400 font-bold italic text-lg">
+               "{llm.improvement_potential || 'Your proactive engagement is the key to recovery.'}"
+             </p>
+          </div>
+        </motion.div>
+
+        {/* Emergency / Critical Panel */}
+        { (isHighRisk || isModerateRisk || isEmergency) && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={cn(
+              "lg:col-span-5 rounded-[2.5rem] p-10 flex flex-col justify-between border relative overflow-hidden",
+              isHighRisk ? "bg-red-500/10 border-red-500/30" : "bg-amber-500/10 border-amber-500/30"
+            )}
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/20 blur-[60px] -mr-16 -mt-16" />
+            
+            <div className="space-y-8 relative z-10">
+              <div className="flex items-center gap-5">
+                <div className={cn(
+                  "w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl animate-pulse",
+                  isHighRisk ? "bg-red-500 text-white shadow-red-500/20" : "bg-amber-500 text-white shadow-amber-500/20"
+                )}>
+                  <AlertCircle size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight uppercase">Critical Alert</h3>
+                  <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">Immediate Attention Required</p>
                 </div>
               </div>
 
-              <button className={clsx(
-                "w-full py-5 mt-8 rounded-2xl text-white font-black text-xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3",
-                isHighRisk ? "bg-red-600 shadow-red-200 hover:bg-red-700" : "bg-orange-500 shadow-orange-200 hover:bg-orange-600"
-              )}>
-                <PhoneCall size={24} />
-                Emergency Services
-              </button>
+              <div className="p-6 rounded-3xl bg-black/20 border border-white/5">
+                <p className="text-white font-bold leading-relaxed">
+                  {llm.emergency_warning || "System has detected high-intensity risk vectors."}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                 <EmergencySymptom label="Active Chest Pain" active={symptoms.some(s => s.toLowerCase().includes('chest'))} />
+                 <EmergencySymptom label="Acute Breathlessness" active={symptoms.some(s => s.toLowerCase().includes('breath'))} />
+                 <EmergencySymptom label="Syncopal Episodes" active={true} />
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* ─── 6. YOUR SYMPTOMS & PAIN AREAS ─── */}
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-             <h3 className="text-xl font-bold text-slate-900">Recorded Symptoms</h3>
-             <div className="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-               {symptoms.length + painAreas.length} Found
-             </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-             {symptoms.map((s, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm group hover:border-indigo-300 transition-colors">
-                   <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                      <Stethoscope size={16} />
-                   </div>
-                   <span className="font-bold text-slate-700 text-sm">{s.replace('(form)', '').replace('(OCR)', '').trim()}</span>
-                </div>
-             ))}
-             {painAreas.map((area, idx) => (
-                <div key={idx} className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-100 rounded-2xl shadow-sm group hover:border-indigo-400 transition-colors">
-                   <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-500 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                      <Map size={16} />
-                   </div>
-                   <span className="font-bold text-indigo-800 text-sm uppercase tracking-tight">{area.replace(/_/g, ' ')}</span>
-                </div>
-             ))}
-          </div>
-        </div>
+            <button className={cn(
+              "w-full py-6 mt-10 rounded-2xl text-white font-black text-xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4 group",
+              isHighRisk ? "bg-red-600 hover:bg-red-700 shadow-red-900/20" : "bg-amber-600 hover:bg-amber-700 shadow-amber-900/20"
+            )}>
+              <PhoneCall size={28} className="group-hover:animate-bounce" />
+              CONTACT EMERGENCY
+            </button>
+          </motion.div>
+        )}
+      </div>
 
-        <div className="pt-12 pb-6 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-50 text-slate-400 font-bold text-xs uppercase tracking-widest border border-slate-100">
-            <ShieldAlert size={14} className="text-slate-300" />
-            AI Diagnostic Guidance • Not a Clinical Mandate
-          </div>
+      {/* ─── 4. RECORDED DATA ─── */}
+      <div className="glass-card rounded-[2.5rem] p-10 border border-white/5">
+        <div className="flex items-center justify-between mb-10">
+           <h3 className="text-xl font-bold text-white flex items-center gap-3">
+             <ClipboardCheck className="text-primary" />
+             Diagnostic Data Registry
+           </h3>
+           <div className="px-4 py-1.5 rounded-full bg-white/5 text-slate-400 text-xs font-black uppercase tracking-widest border border-white/5">
+             {symptoms.length + painAreas.length} Total Indicators
+           </div>
         </div>
-      </main>
+        <div className="flex flex-wrap gap-4">
+           {symptoms.map((s, idx) => (
+              <div key={idx} className="flex items-center gap-4 px-6 py-4 bg-slate-900/60 border border-white/5 rounded-[1.5rem] hover:border-primary/50 transition-all group">
+                 <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                    <Stethoscope size={20} />
+                 </div>
+                 <span className="font-bold text-slate-200">{s.replace('(form)', '').replace('(OCR)', '').trim()}</span>
+              </div>
+           ))}
+           {painAreas.map((area, idx) => (
+              <div key={idx} className="flex items-center gap-4 px-6 py-4 bg-primary/10 border border-primary/20 rounded-[1.5rem] hover:bg-primary/20 transition-all">
+                 <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+                    <Map size={20} />
+                 </div>
+                 <span className="font-bold text-primary uppercase tracking-widest text-sm">{area.replace(/_/g, ' ')}</span>
+              </div>
+           ))}
+        </div>
+      </div>
+
+      <div className="text-center pt-10">
+        <div className="inline-flex items-center gap-4 px-8 py-4 rounded-full bg-white/5 border border-white/5 text-slate-500 font-bold text-xs uppercase tracking-[0.2em]">
+          <ShieldAlert size={16} />
+          Verified AI Diagnostic Simulation
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 function MarkerCard({ label, value, icon }) {
   return (
-    <div className="bg-slate-50 border border-slate-100 p-4 rounded-3xl flex items-center gap-4 hover:bg-white hover:shadow-md transition-all">
-      <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-indigo-500 shadow-sm">
+    <div className="bg-white/5 border border-white/5 p-6 rounded-[2rem] flex flex-col gap-4 hover:bg-white/10 hover:border-white/20 transition-all group">
+      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
         {icon}
       </div>
       <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="text-base font-black text-slate-800">{value}</p>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">{label}</p>
+        <p className="text-xl font-black text-white">{value}</p>
       </div>
     </div>
   );
@@ -320,12 +319,12 @@ function MarkerCard({ label, value, icon }) {
 
 function EmergencySymptom({ label, active }) {
   return (
-    <div className={clsx(
-      "flex items-center gap-3 p-3 rounded-2xl transition-all",
-      active ? "bg-white shadow-sm border border-red-100" : "opacity-50"
+    <div className={cn(
+      "flex items-center gap-4 p-4 rounded-2xl transition-all border",
+      active ? "bg-white/10 border-white/20 shadow-xl" : "bg-black/20 border-transparent opacity-30"
     )}>
-       <div className={clsx("w-2 h-2 rounded-full", active ? "bg-red-500 animate-pulse" : "bg-slate-300")} />
-       <span className={clsx("text-sm font-bold", active ? "text-red-700" : "text-slate-500")}>{label}</span>
+       <div className={cn("w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]", active ? "text-red-500 bg-red-500 animate-pulse" : "text-slate-600 bg-slate-600")} />
+       <span className={cn("text-sm font-bold uppercase tracking-widest", active ? "text-white" : "text-slate-500")}>{label}</span>
     </div>
   );
 }

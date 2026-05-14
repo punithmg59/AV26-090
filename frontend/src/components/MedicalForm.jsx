@@ -1,251 +1,317 @@
 import React from 'react';
-import { Activity } from 'lucide-react';
-import clsx from 'clsx';
+import { 
+  User, 
+  Activity, 
+  Droplets, 
+  Heart, 
+  Zap, 
+  Wind, 
+  AlertCircle, 
+  Navigation, 
+  ChevronRight,
+  TrendingUp,
+  Brain,
+  Cigarette,
+  Dna
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+import useStore from '../store/useStore';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-export default function MedicalForm({ formData, setFormData, onSubmit, loading }) {
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
+export default function MedicalForm({ onSubmit, loading }) {
+  const { formData, setFormData } = useStore();
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const numValue = Number(value);
+    setFormData({ [name]: isNaN(numValue) ? value : numValue });
   };
 
   const handleToggle = (name, value) => {
-    setFormData({ ...formData, [name]: value });
+    setFormData({ [name]: value });
   };
 
-  const increment = (name, max = 999) => {
-    const val = Number(formData[name]) || 0;
-    if (val < max) setFormData({ ...formData, [name]: val + 1 });
-  };
-
-  const decrement = (name, min = 0) => {
-    const val = Number(formData[name]) || 0;
-    if (val > min) setFormData({ ...formData, [name]: val - 1 });
-  };
+  const inputClasses = "glass-input w-full px-4 py-3 rounded-2xl text-sm font-medium text-white transition-all";
+  const labelClasses = "text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2";
 
   return (
-    <div className="bg-surface rounded-3xl border border-border p-5 flex flex-col shadow-sm">
-      <div className="mb-4 shrink-0">
-        <h2 className="text-lg font-bold text-textMain mb-0.5">Your Health Information</h2>
-        <p className="text-xs text-textMuted">Please provide the following details</p>
-      </div>
+    <div className="flex flex-col gap-8 h-full custom-scrollbar overflow-y-auto pr-2">
+      {/* Basic Information */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <User size={20} className="text-blue-400" />
+          </div>
+          <h3 className="text-lg font-bold text-white">Basic Information</h3>
+        </div>
 
-      <div className="flex-1 pr-2">
-        <form onSubmit={onSubmit} className="space-y-3">
-          
-          {/* 1. Age */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">1</span>
-              Age (years)
-            </label>
-            <div className="flex items-center border border-border rounded-lg overflow-hidden h-8 w-36">
-              <input type="number" name="age" value={formData.age} onChange={handleChange} className="w-full h-full text-center outline-none text-xs font-medium" required />
-              <button type="button" onClick={() => decrement('age', 1)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">-</button>
-              <button type="button" onClick={() => increment('age', 120)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">+</button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className={labelClasses}><Dna size={14} /> Age (years)</label>
+            <input 
+              type="number" 
+              name="age" 
+              value={formData.age} 
+              onChange={handleChange} 
+              className={inputClasses}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClasses}><User size={14} /> Biological Sex</label>
+            <div className="flex bg-slate-900/60 p-1 rounded-2xl border border-white/5">
+              <button 
+                onClick={() => handleToggle('sex', 1)}
+                className={cn(
+                  "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all",
+                  formData.sex === 1 ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-500 hover:text-slate-300"
+                )}
+              >
+                Male
+              </button>
+              <button 
+                onClick={() => handleToggle('sex', 0)}
+                className={cn(
+                  "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all",
+                  formData.sex === 0 ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-500 hover:text-slate-300"
+                )}
+              >
+                Female
+              </button>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* 2. Sex */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">2</span>
-              Sex
-            </label>
-            <div className="flex items-center bg-gray-100 p-0.5 rounded-lg w-36">
-              <button type="button" onClick={() => handleToggle('sex', 1)} className={clsx("flex-1 text-xs py-1 rounded-md font-medium transition", formData.sex === 1 ? "bg-primary text-white shadow-sm" : "text-textMuted")}>Male</button>
-              <button type="button" onClick={() => handleToggle('sex', 0)} className={clsx("flex-1 text-xs py-1 rounded-md font-medium transition", formData.sex === 0 ? "bg-primary text-white shadow-sm" : "text-textMuted")}>Female</button>
-            </div>
+      {/* Clinical Metrics */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+            <Activity size={20} className="text-emerald-400" />
           </div>
+          <h3 className="text-lg font-bold text-white">Clinical Metrics</h3>
+        </div>
 
-          {/* 3. Chest Pain Type */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">3</span>
-              Chest Pain Type (cp)
-            </label>
-            <select name="cp" value={formData.cp} onChange={handleChange} required className="w-36 h-8 border border-border rounded-lg px-2 text-xs outline-none focus:border-primary bg-white text-textMain">
-              <option value="" disabled>Select...</option>
-              <option value="0">0. Typical</option>
-              <option value="1">1. Atypical</option>
-              <option value="2">2. Non-anginal</option>
-              <option value="3">3. Asymptomatic</option>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className={labelClasses}><Droplets size={14} /> Resting BP (mmHg)</label>
+            <input 
+              type="number" 
+              name="trestbps" 
+              value={formData.trestbps} 
+              onChange={handleChange} 
+              className={inputClasses}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClasses}><TrendingUp size={14} /> Cholesterol (mg/dl)</label>
+            <input 
+              type="number" 
+              name="chol" 
+              value={formData.chol} 
+              onChange={handleChange} 
+              className={inputClasses}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClasses}><Heart size={14} /> Max Heart Rate</label>
+            <input 
+              type="number" 
+              name="thalach" 
+              value={formData.thalach} 
+              onChange={handleChange} 
+              className={inputClasses}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClasses}><Zap size={14} /> Chest Pain Type</label>
+            <select 
+              name="cp" 
+              value={formData.cp} 
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="0">Typical Angina</option>
+              <option value="1">Atypical Angina</option>
+              <option value="2">Non-anginal Pain</option>
+              <option value="3">Asymptomatic</option>
             </select>
           </div>
+        </div>
+      </section>
 
-          {/* 4. Resting Blood Pressure */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">4</span>
-              Resting Blood Pressure
+      {/* Symptoms & Lifestyle */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+            <Brain size={20} className="text-amber-400" />
+          </div>
+          <h3 className="text-lg font-bold text-white">Symptoms & Lifestyle</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <Cigarette size={16} className="text-slate-500" /> Smoking Status
             </label>
-            <div className="flex items-center border border-border rounded-lg overflow-hidden h-8 w-36">
-              <input type="number" name="trestbps" value={formData.trestbps} onChange={handleChange} className="w-full h-full text-center outline-none text-xs font-medium" required />
-              <button type="button" onClick={() => decrement('trestbps', 50)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">-</button>
-              <button type="button" onClick={() => increment('trestbps', 300)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">+</button>
+            <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
+              <button 
+                onClick={() => handleToggle('smoking', 0)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.smoking === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
+              >
+                No
+              </button>
+              <button 
+                onClick={() => handleToggle('smoking', 1)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.smoking === 1 ? "bg-red-500/80 text-white" : "text-slate-600")}
+              >
+                Yes
+              </button>
             </div>
           </div>
 
-          {/* 5. Cholesterol */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">5</span>
-              Serum Cholesterol
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <Wind size={16} className="text-slate-500" /> Shortness of Breath
             </label>
-            <div className="flex items-center border border-border rounded-lg overflow-hidden h-8 w-36">
-              <input type="number" name="chol" value={formData.chol} onChange={handleChange} className="w-full h-full text-center outline-none text-xs font-medium" required />
-              <button type="button" onClick={() => decrement('chol', 100)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">-</button>
-              <button type="button" onClick={() => increment('chol', 600)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">+</button>
+            <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
+              <button 
+                onClick={() => handleToggle('short_breath', 0)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.short_breath === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
+              >
+                No
+              </button>
+              <button 
+                onClick={() => handleToggle('short_breath', 1)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.short_breath === 1 ? "bg-amber-500/80 text-white" : "text-slate-600")}
+              >
+                Yes
+              </button>
             </div>
           </div>
 
-          {/* 6. FBS */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">6</span>
-              Fasting Blood Sugar {'>'} 120
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <Activity size={16} className="text-slate-500" /> Fatigue
             </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('fbs', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.fbs === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('fbs', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.fbs === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
+            <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
+              <button 
+                onClick={() => handleToggle('fatigue', 0)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.fatigue === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
+              >
+                No
+              </button>
+              <button 
+                onClick={() => handleToggle('fatigue', 1)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.fatigue === 1 ? "bg-amber-500/80 text-white" : "text-slate-600")}
+              >
+                Yes
+              </button>
             </div>
           </div>
 
-          {/* 7. Max Heart Rate */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">7</span>
-              Max Heart Rate Achieved
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <AlertCircle size={16} className="text-slate-500" /> Exercise Angina
             </label>
-            <div className="flex items-center border border-border rounded-lg overflow-hidden h-8 w-36">
-              <input type="number" name="thalach" value={formData.thalach} onChange={handleChange} className="w-full h-full text-center outline-none text-xs font-medium" required />
-              <button type="button" onClick={() => decrement('thalach', 60)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">-</button>
-              <button type="button" onClick={() => increment('thalach', 220)} className="px-2.5 bg-gray-50 border-l border-border hover:bg-gray-100 transition text-textMuted">+</button>
+            <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
+              <button 
+                onClick={() => handleToggle('exang', 0)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.exang === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
+              >
+                No
+              </button>
+              <button 
+                onClick={() => handleToggle('exang', 1)}
+                className={cn("flex-1 rounded-full text-[10px] font-bold", formData.exang === 1 ? "bg-red-500/80 text-white" : "text-slate-600")}
+              >
+                Yes
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* 8. Exang */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">8</span>
-              Exercise Induced Angina
-            </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('exang', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.exang === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('exang', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.exang === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
-            </div>
+        <div className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stress Level Index</label>
+            <span className="text-primary font-bold">{formData.stress_level}/10</span>
           </div>
+          <input 
+            type="range" 
+            name="stress_level" 
+            min="1" 
+            max="10" 
+            step="1"
+            value={formData.stress_level} 
+            onChange={handleChange}
+            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
+          />
+        </div>
+      </section>
 
-          {/* 9. Smoking */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">9</span>
-              Smoking
-            </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('smoking', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.smoking === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('smoking', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.smoking === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
-            </div>
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+            <Navigation size={20} className="text-purple-400" />
           </div>
+          <h3 className="text-lg font-bold text-white">Pain Information</h3>
+        </div>
 
-          {/* 10. Stress Level */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2 min-w-[120px]">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">10</span>
-              Stress Level
-            </label>
-            <div className="flex-1 flex items-center gap-3 w-36">
-              <input type="range" name="stress_level" min="1" max="10" value={formData.stress_level || 1} onChange={handleChange} className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary" />
-              <span className="w-4 text-right font-semibold text-textMain text-xs">{formData.stress_level || 1}</span>
-            </div>
-          </div>
-
-          {/* 11. Short Breath */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">11</span>
-              Shortness of Breath
-            </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('short_breath', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.short_breath === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('short_breath', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.short_breath === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
-            </div>
-          </div>
-
-          {/* 12. Fatigue */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">12</span>
-              Fatigue
-            </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('fatigue', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.fatigue === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('fatigue', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.fatigue === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
-            </div>
-          </div>
-
-          {/* 13. Chest Location */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">13</span>
-              Chest Pain Location
-            </label>
-            <select name="chest_location" value={formData.chest_location} onChange={handleChange} required className="w-36 h-8 border border-border rounded-lg px-2 text-xs outline-none focus:border-primary bg-white">
-              <option value="" disabled>Select...</option>
-              <option value="1">1. Center</option>
-              <option value="0">0. Left/Right</option>
-            </select>
-          </div>
-
-          {/* 14. Left Arm Pain */}
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">14</span>
-              Left Arm Pain
-            </label>
-            <div className="flex items-center gap-1.5 w-36">
-              <button type="button" onClick={() => handleToggle('left_arm_pain', 0)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.left_arm_pain === 0 ? "border-primary bg-indigo-50 text-primary font-medium" : "border-border text-textMuted hover:bg-gray-50")}>No (0)</button>
-              <button type="button" onClick={() => handleToggle('left_arm_pain', 1)} className={clsx("flex-1 h-8 text-xs rounded-lg border transition", formData.left_arm_pain === 1 ? "border-primary bg-primary text-white font-medium shadow-sm" : "border-border text-textMuted hover:bg-gray-50")}>Yes (1)</button>
-            </div>
-          </div>
-
-          {/* 15. Pain Severity */}
-          <div className="flex items-center justify-between gap-3 pb-1">
-            <label className="text-xs font-medium text-textMain flex items-center gap-2">
-              <span className="text-primary bg-indigo-50 w-5 h-5 rounded flex items-center justify-center text-[10px]">15</span>
-              Pain Severity
-            </label>
-            <div className="flex items-center bg-gray-100 p-0.5 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className={labelClasses}>Pain Severity</label>
+            <div className="flex gap-2">
               {[1, 2, 3, 4].map((level) => (
-                <button 
-                  key={level} 
-                  type="button" 
-                  onClick={() => handleToggle('pain_severity', level)} 
-                  className={clsx(
-                    "w-12 text-[10px] py-1.5 rounded-md font-medium transition", 
-                    formData.pain_severity === level ? "bg-primary text-white shadow-sm" : "text-textMuted"
+                <button
+                  key={level}
+                  onClick={() => handleToggle('pain_severity', level)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-bold transition-all",
+                    formData.pain_severity === level ? "bg-purple-500 text-white" : "bg-slate-900/60 text-slate-500"
                   )}
                 >
-                  {level === 1 ? '1 Mild' : level === 2 ? '2 Mod' : level === 3 ? '3 Sev' : '4 V.Sev'}
+                  L{level}
                 </button>
               ))}
             </div>
           </div>
-        </form>
-      </div>
+          <div className="space-y-2">
+            <label className={labelClasses}>Chest Pain Location</label>
+            <select 
+              name="chest_location" 
+              value={formData.chest_location} 
+              onChange={handleChange}
+              className={inputClasses}
+            >
+              <option value="1">Center Chest</option>
+              <option value="0">Left/Right Sides</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-      <div className="pt-4 mt-auto border-t border-gray-100 shrink-0">
+      <div className="pt-6 mt-auto">
         <button 
           onClick={onSubmit}
           disabled={loading}
-          className="w-full bg-primary hover:bg-indigo-700 text-white font-medium h-12 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md shadow-indigo-200/50 disabled:opacity-70 text-sm"
+          className="w-full relative group overflow-hidden"
         >
-          {loading ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Activity size={18} />
-              <span>Predict Heart Disease Risk</span>
-            </>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary to-indigo-600 group-hover:scale-105 transition-transform duration-300" />
+          <div className="relative h-14 rounded-2xl flex items-center justify-center gap-3 text-white font-bold shadow-xl shadow-primary/30">
+            {loading ? (
+              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <Heart size={20} className="group-hover:scale-125 transition-transform" />
+                Analyze Cardiac Risk
+                <ChevronRight size={20} />
+              </>
+            )}
+          </div>
         </button>
       </div>
     </div>
