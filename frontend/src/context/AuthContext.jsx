@@ -1,93 +1,63 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext({});
 
+// Helper for promise timeout
+const withTimeout = (promise, ms = 10000, errorMsg = 'Request timed out') => {
+  return Promise.race([
+    promise,
+    new RegExp('timeout').test(errorMsg) 
+      ? new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+      : new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+  ]);
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const lastFetchedId = useRef(null);
 
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) return null;
-    console.time('profile-fetch');
+    
+    // Prevent redundant fetches for the same user
+    if (lastFetchedId.current === userId && profile) {
+      return profile;
+    }
+
+    console.log(`🔐 Auth: Fetching profile for ${userId}...`);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        8000,
+        'Profile fetch timed out'
+      );
 
       if (!error && data) {
         setProfile(data);
+        lastFetchedId.current = userId;
         return data;
       }
       return null;
     } catch (err) {
-      console.error('Profile fetch error:', err);
+      console.error('❌ Auth: Profile fetch error:', err);
       return null;
-    } finally {
-      console.timeEnd('profile-fetch');
     }
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
-      console.log("🔐 Auth: Starting initialization...");
-      console.time('auth-init');
-      
-      // Failsafe timeout: Force stop loading after 8 seconds
-      const failsafe = setTimeout(() => {
-        if (mounted && loading) {
-          console.warn("⚠️ Auth: Failsafe triggered. Force-stopping loading state.");
-          setLoading(false);
-        }
-      }, 8000);
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log("🔐 Auth: Session retrieved:", session ? "Active" : "None");
-        
-        if (mounted) {
-          const currentUser = session?.user ?? null;
-          setUser(currentUser);
-          if (currentUser) {
-            console.log("🔐 Auth: Fetching profile for:", currentUser.id);
-            const p = await fetchProfile(currentUser.id);
-            
-            // Auto-creation check: If user exists but no profile row found, create it
-            if (!p && currentUser.email) {
-              console.log("🔐 Auth: Profile missing for existing user. Creating...");
-              const { data: newProfile, error: createError } = await supabase.from('profiles').upsert({
-                id: currentUser.id,
-                email: currentUser.email,
-                full_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-                username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
-                phone: currentUser.user_metadata?.phone || '',
-              }).select().single();
-              
-              if (!createError && newProfile) {
-                setProfile(newProfile);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error('❌ Auth: Initialization error:', err);
-      } finally {
-        clearTimeout(failsafe);
-        if (mounted) {
-          setLoading(false);
-          console.log("🔐 Auth: Initialization complete.");
-          console.timeEnd('auth-init');
-        }
+    // Failsafe timeout: Force stop loading after 10 seconds
+    const failsafe = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn("⚠️ Auth: Failsafe triggered. Force-stopping loading state.");
+        setLoading(false);
       }
-    };
-
-    initializeAuth();
+    }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`🔐 Auth: onAuthStateChange [${event}]`);
@@ -97,21 +67,45 @@ export const AuthProvider = ({ children }) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           if (currentUser) {
-            setLoading(true); // Keep loading while profile is being fetched
-            console.log("🔐 Auth: Fetching profile on event...");
-            await fetchProfile(currentUser.id);
+            setLoading(true);
+            const p = await fetchProfile(currentUser.id);
+            
+            // Auto-creation check
+            if (!p && currentUser.email && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+              console.log("🔐 Auth: Creating missing profile...");
+              const { data: newProfile, error: createError } = await withTimeout(
+                supabase.from('profiles').upsert({
+                  id: currentUser.id,
+                  email: currentUser.email,
+                  full_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+                  username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
+                  phone: currentUser.user_metadata?.phone || '',
+                }).select().single(),
+                8000,
+                'Profile creation timed out'
+              );
+              
+              if (!createError && newProfile) {
+                setProfile(newProfile);
+                lastFetchedId.current = currentUser.id;
+              }
+            }
+          } else {
+            setProfile(null);
+            lastFetchedId.current = null;
           }
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
+          lastFetchedId.current = null;
         }
       } catch (err) {
         console.error("❌ Auth: Change listener error:", err);
       } finally {
         if (mounted) {
           setLoading(false);
-          console.log("🔐 Auth: Loading state cleared by event.");
+          clearTimeout(failsafe);
         }
       }
     });
@@ -119,31 +113,35 @@ export const AuthProvider = ({ children }) => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(failsafe);
     };
   }, [fetchProfile]);
 
   const signUp = async ({ email, password, full_name, phone, username }) => {
-    console.time('signup-flow');
+    console.log("🔐 Auth: Signup request received");
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name,
-            username: username || email.split('@')[0],
-            phone,
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name,
+              username: username || email.split('@')[0],
+              phone,
+            }
           }
-        }
-      });
+        }),
+        10000,
+        'Signup request timed out'
+      );
 
       if (error) throw error;
 
       if (data.user) {
-        console.log("🔐 Auth: Creating profile for new user...");
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
+        console.log("🔐 Auth: User created successfully. Syncing profile...");
+        const { error: profileError } = await withTimeout(
+          supabase.from('profiles').upsert([
             {
               id: data.user.id,
               full_name,
@@ -151,63 +149,51 @@ export const AuthProvider = ({ children }) => {
               phone,
               username: username || email.split('@')[0],
             },
-          ]);
+          ]),
+          8000,
+          'Profile sync timed out'
+        );
         
-        if (profileError) {
-          console.error("❌ Auth: Profile creation error:", profileError);
-          throw profileError;
-        }
-        console.log("🔐 Auth: Profile created successfully.");
-        const p = await fetchProfile(data.user.id);
-        return { user: data.user, profile: p, session: data.session };
+        if (profileError) console.warn("⚠️ Auth: Profile sync delayed:", profileError);
+        return data;
       }
       return data;
-    } finally {
-      console.timeEnd('signup-flow');
-    }
-  };
-
-  const updateProfile = async (updates) => {
-    if (!user) throw new Error('No user logged in');
-    
-    try {
-      setLoading(true);
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      await fetchProfile(user.id);
-      toast.success('Profile updated successfully');
-      return { success: true };
     } catch (error) {
-      console.error('❌ Auth: Profile update error:', error);
-      toast.error(error.message || 'Failed to update profile');
+      console.error("❌ Auth: Signup error:", error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   const signIn = async ({ email, password }) => {
-    console.time('login-flow');
+    console.log("🔐 Auth: Login request received");
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        10000,
+        'Login request timed out'
+      );
       if (error) throw error;
+      console.log("🔐 Auth: Login successful");
       return data;
-    } finally {
-      console.timeEnd('login-flow');
+    } catch (error) {
+      console.error("❌ Auth: Login error:", error);
+      throw error;
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      const { error } = await withTimeout(supabase.auth.signOut(), 5000, 'Logout timed out');
+      if (error) throw error;
+      setProfile(null);
+      lastFetchedId.current = null;
+    } catch (error) {
+      console.error("❌ Auth: Logout error:", error);
+      // Even if it fails, clear local state
+      setUser(null);
+      setProfile(null);
+      lastFetchedId.current = null;
+    }
   };
 
   const value = useMemo(() => ({
@@ -217,7 +203,26 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    updateProfile,
+    updateProfile: async (updates) => {
+      if (!user) throw new Error('No user logged in');
+      try {
+        setLoading(true);
+        const { error } = await withTimeout(
+          supabase.from('profiles').update(updates).eq('id', user.id),
+          8000,
+          'Profile update timed out'
+        );
+        if (error) throw error;
+        await fetchProfile(user.id);
+        toast.success('Profile updated');
+        return { success: true };
+      } catch (error) {
+        toast.error(error.message);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
     refreshProfile: () => user && fetchProfile(user.id)
   }), [user, profile, loading, fetchProfile]);
 
@@ -230,9 +235,7 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 

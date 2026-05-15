@@ -18,9 +18,20 @@ from responses.report_validator import sanitize_report
 
 logger = logging.getLogger(__name__)
 
-# Initialize predictor singleton (model loaded once at import time)
-MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'saved_models'))
-predictor = BrainTumorPredictor(MODEL_DIR)
+# Lazy-loaded predictor singleton
+_predictor = None
+
+def get_predictor():
+    global _predictor
+    if _predictor is None:
+        try:
+            MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'saved_models'))
+            print(f"⏳ Loading Brain Tumor model from {MODEL_DIR}...")
+            _predictor = BrainTumorPredictor(MODEL_DIR)
+            print("✅ Brain Tumor model loaded.")
+        except Exception as e:
+            print(f"❌ Error loading Brain Tumor model: {e}")
+    return _predictor
 
 # Directories
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'mri')
@@ -80,7 +91,11 @@ async def process_brain_mri(file: UploadFile):
         # ============================
         # 2. Run AI Prediction
         # ============================
-        prediction_result = predictor.predict(file_bytes)
+        brain_predictor = get_predictor()
+        if brain_predictor is None:
+            raise RuntimeError("Brain Tumor MRI model failed to load")
+            
+        prediction_result = brain_predictor.predict(file_bytes)
         pred_class = prediction_result.get("class_name", "UNKNOWN")
         display_name = prediction_result.get("display_name", pred_class)
         confidence = prediction_result.get("confidence", 0.0)

@@ -4,7 +4,6 @@ Singleton class that loads the model once and reuses for all predictions.
 """
 import os
 import numpy as np
-import tensorflow as tf
 import logging
 import traceback
 
@@ -38,6 +37,7 @@ class BrainTumorPredictor:
 
     def _load_model(self):
         """Load the trained H5 model from disk."""
+        import tensorflow as tf
         try:
             if os.path.exists(self.model_path):
                 logger.info(f"[MRI MODEL] Loading brain tumor model from {self.model_path}...")

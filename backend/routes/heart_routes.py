@@ -23,15 +23,25 @@ from services.medical_data_extraction import get_medical_data_extractor
 router = APIRouter()
 
 # =========================
-# LOAD MODEL
+# LOAD MODEL (LAZY)
 # =========================
 
-try:
-    model = joblib.load("models/heart/heart_model.pkl")
+_heart_model = None
 
-except Exception as e:
-    model = None
-    print("Model loading error:", e)
+def get_heart_model():
+    global _heart_model
+    if _heart_model is None:
+        try:
+            path = "models/heart/heart_model.pkl"
+            if os.path.exists(path):
+                print(f"⏳ Loading Heart model from {path}...")
+                _heart_model = joblib.load(path)
+                print("✅ Heart model loaded.")
+            else:
+                print(f"⚠️ Heart model not found at {path}")
+        except Exception as e:
+            print(f"❌ Error loading Heart model: {e}")
+    return _heart_model
 
 # =========================
 # REQUEST MODEL
@@ -73,10 +83,11 @@ async def predict_heart(data: HeartRequest):
         # CHECK MODEL
         # =========================
 
-        if model is None:
+        heart_model = get_heart_model()
+        if heart_model is None:
             raise HTTPException(
                 status_code=500,
-                detail="Heart model not loaded"
+                detail="Heart model not available"
             )
 
         # =========================
@@ -98,9 +109,9 @@ async def predict_heart(data: HeartRequest):
         # PREDICTION
         # =========================
 
-        prediction = model.predict(user_features)
+        prediction = heart_model.predict(user_features)
 
-        probability = model.predict_proba(user_features)
+        probability = heart_model.predict_proba(user_features)
 
         base_risk = float(probability[0][1])
 
@@ -463,9 +474,13 @@ async def predict_heart_multimodal(
         # =========================
         # PREDICTION
         # =========================
-        
-        prediction = model.predict(user_features)
-        probability = model.predict_proba(user_features)
+
+        heart_model = get_heart_model()
+        if heart_model is None:
+            raise HTTPException(status_code=500, detail="Heart model not available")
+            
+        prediction = heart_model.predict(user_features)
+        probability = heart_model.predict_proba(user_features)
         base_risk = float(probability[0][1])
         
         # =========================
