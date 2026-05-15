@@ -24,10 +24,18 @@ const Login = () => {
     console.time('login-button-to-redirect');
     
     try {
-      await signIn({ email, password });
+      const { session } = await signIn({ email, password });
+      
+      // If we got a session, wait a brief moment for context to catch up
+      // or rely on the navigate happening after the next render cycle
       toast.success('Access Granted');
-      // Use replace: true to prevent going back to login
-      navigate(from, { replace: true });
+      
+      // We use a small timeout to ensure the AuthProvider has processed the SIGNED_IN event
+      // and updated the 'user' state before we hit the ProtectedRoute
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 100);
+      
     } catch (error) {
       toast.error(error.message || 'Authentication Failed');
     } finally {

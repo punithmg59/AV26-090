@@ -1,19 +1,29 @@
 import React from 'react';
-import { Moon, Sun, Globe, Trash2, Bell, User } from 'lucide-react';
+import { Moon, Sun, Globe, Trash2, Bell, User, LogOut } from 'lucide-react';
 import useStore from '../store/useStore';
 import { clearHistory } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import useTranslation from '../hooks/useTranslation';
 
 const languages = [
   { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिन्दी (Hindi)' },
-  { code: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
-  { code: 'ta', label: 'தமிழ் (Tamil)' },
-  { code: 'te', label: 'తెలుగు (Telugu)' },
-  { code: 'ml', label: 'മലയാളം (Malayalam)' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'kn', label: 'Kannada' },
+  { code: 'ta', label: 'Tamil' },
+  { code: 'te', label: 'Telugu' },
+  { code: 'ml', label: 'Malayalam' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'ar', label: 'Arabic' },
 ];
 
 export default function SettingsPage() {
   const { theme, toggleTheme, language, setLanguage, notifications, setNotifications } = useStore();
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { t, translating } = useTranslation();
   const isLight = theme === 'light';
 
   const card = isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-slate-900 border border-slate-800';
@@ -33,22 +43,24 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Settings</h1>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{t('settings')}</h1>
         <p className={`text-sm mt-1 ${muted}`}>Manage your app preferences</p>
       </div>
 
       {/* Profile */}
       <div className={`${card} rounded-xl p-6`}>
         <h2 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${isLight ? 'text-gray-800' : 'text-white'}`}>
-          <User size={16} /> Profile
+          <User size={16} /> Profile Information
         </h2>
         <div className="flex items-center gap-4">
           <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-lg font-bold ${
             isLight ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-600 text-white'
-          }`}>PM</div>
+          }`}>
+            {profile?.full_name?.[0] || 'U'}
+          </div>
           <div>
-            <p className={`font-semibold ${isLight ? 'text-gray-800' : 'text-white'}`}>Punith M</p>
-            <p className={`text-sm ${muted}`}>Healthcare AI Platform User</p>
+            <p className={`font-semibold ${isLight ? 'text-gray-800' : 'text-white'}`}>{profile?.full_name || 'Healthcare User'}</p>
+            <p className={`text-sm ${muted}`}>{user?.email}</p>
           </div>
         </div>
       </div>
@@ -80,6 +92,7 @@ export default function SettingsPage() {
       <div className={`${card} rounded-xl p-6`}>
         <h2 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${isLight ? 'text-gray-800' : 'text-white'}`}>
           <Globe size={16} /> Language
+          {translating && <span className="text-xs text-indigo-400 animate-pulse ml-2">Translating...</span>}
         </h2>
         <select
           value={language}
@@ -90,6 +103,9 @@ export default function SettingsPage() {
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </select>
+        <p className={`text-xs mt-2 ${muted}`}>
+          Reports, navigation, and UI labels will translate to the selected language.
+        </p>
       </div>
 
       {/* Notifications */}
@@ -118,19 +134,35 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <div className={`${card} rounded-xl p-6 border-red-500/30`}>
         <h2 className={`text-sm font-semibold mb-4 flex items-center gap-2 text-red-500`}>
-          <Trash2 size={16} /> Data Management
+          <Trash2 size={16} /> Danger Zone
         </h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className={`text-sm font-medium ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>Clear All History</p>
-            <p className={`text-xs ${muted}`}>Permanently delete all prediction records</p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-medium ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>Clear All History</p>
+              <p className={`text-xs ${muted}`}>Permanently delete all prediction records</p>
+            </div>
+            <button
+              onClick={handleClearHistory}
+              className="px-4 py-2 text-xs font-semibold text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+            >
+              Clear Data
+            </button>
           </div>
-          <button
-            onClick={handleClearHistory}
-            className="px-4 py-2 text-xs font-semibold text-red-500 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
-          >
-            Clear Data
-          </button>
+
+          <div className="pt-4 border-t border-inherit flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-medium ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>{t('sign_out')}</p>
+              <p className={`text-xs ${muted}`}>End your current session</p>
+            </div>
+            <button
+              onClick={() => { signOut(); navigate('/login'); }}
+              className="px-4 py-2 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+            >
+              <LogOut size={14} />
+              {t('sign_out')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

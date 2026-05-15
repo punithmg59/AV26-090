@@ -65,6 +65,8 @@ class HeartPrediction(Base):
 
     emergency = Column(Boolean)
 
+    report = Column(String)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # =========================

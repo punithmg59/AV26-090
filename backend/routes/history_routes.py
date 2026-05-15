@@ -36,6 +36,7 @@ def get_all_history(
                 "cholesterol": r.cholesterol,
                 "heart_rate": r.heart_rate,
                 "emergency": r.emergency,
+                "report": r.report,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             })
 
@@ -74,6 +75,7 @@ def get_history_detail(record_id: int):
             "fatigue": record.fatigue,
             "emergency": record.emergency,
             "pain_severity": record.pain_severity,
+            "report": record.report,
             "created_at": record.created_at.isoformat() if record.created_at else None,
         }
     except HTTPException:

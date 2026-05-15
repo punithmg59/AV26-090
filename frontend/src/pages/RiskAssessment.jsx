@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { predictHeart } from '../services/api';
+import useTranslation from '../hooks/useTranslation';
 
 import BodySelector from '../components/BodySelector';
 import MedicalForm from '../components/MedicalForm';
@@ -12,6 +13,7 @@ export default function RiskAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { theme, formData, setFormData, selectedAreas, uploadedFiles, setUploadedFiles } = useStore();
+  const { t } = useTranslation();
   const isLight = theme === 'light';
 
   const card = isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-slate-900 border border-slate-800';
@@ -74,8 +76,8 @@ export default function RiskAssessment() {
   return (
     <div className="max-w-[1600px] mx-auto space-y-6">
       <div>
-        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Disease Assessment</h1>
-        <p className={`text-sm mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>Upload medical documents for AI-powered disease analysis</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{t('disease_assessment')}</h1>
+        <p className={`text-sm mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>{t('upload_documents')}</p>
       </div>
 
       {/* Upload Section */}

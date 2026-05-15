@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Eye, Clock, Heart, Loader2, Inbox } from 'lucide-react';
 import useStore from '../store/useStore';
-import { getHistory } from '../services/api';
+import { getHistory, getMriHistory } from '../services/api';
 import { getXrayHistory } from '../services/xrayApi';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,16 +23,20 @@ export default function HistoryPage() {
       const params = {};
       if (filter !== 'all') params.disease_type = filter;
       
-      // Fetch all history types
-      const [heartRes, xrayRes, mriRes] = await Promise.all([
+      // Fetch all history types with resilience
+      const results = await Promise.allSettled([
         getHistory(params),
         getXrayHistory(),
         getMriHistory()
       ]);
 
-      const heartRecords = (heartRes.data.history || []).map(r => ({ ...r, type: 'heart' }));
-      const xrayRecords = (xrayRes || []).map(r => ({ ...r, type: 'xray' }));
-      const mriRecords = (mriRes.data || []).map(r => ({ ...r, type: 'mri' }));
+      const heartRes = results[0].status === 'fulfilled' ? results[0].value : { data: { history: [] } };
+      const xrayRes = results[1].status === 'fulfilled' ? results[1].value : [];
+      const mriRes = results[2].status === 'fulfilled' ? results[2].value : { data: [] };
+
+      const heartRecords = (heartRes.data?.history || []).map(r => ({ ...r, type: 'heart' }));
+      const xrayRecords = (Array.isArray(xrayRes) ? xrayRes : []).map(r => ({ ...r, type: 'xray' }));
+      const mriRecords = (Array.isArray(mriRes.data) ? mriRes.data : []).map(r => ({ ...r, type: 'mri' }));
 
       let combined = [...heartRecords, ...xrayRecords, ...mriRecords];
       
@@ -41,8 +45,12 @@ export default function HistoryPage() {
       if (filter === 'xray') combined = combined.filter(r => r.type === 'xray');
       if (filter === 'mri') combined = combined.filter(r => r.type === 'mri');
 
-      // Sort by date
-      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // Sort by date - handle potential null dates
+      combined.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateB - dateA;
+      });
 
       setRecords(combined);
       setTotal(combined.length);
@@ -56,20 +64,21 @@ export default function HistoryPage() {
   useEffect(() => { fetchHistory(); }, [filter]);
 
   const handleViewReport = (r) => {
-    if (r.type === 'mri' || r.type === 'xray') {
-      // Parse report if it's a string
-      let reportData = r.report;
-      if (typeof reportData === 'string') {
-        try {
-          reportData = JSON.parse(reportData.replace(/'/g, '"'));
-        } catch (e) {
-          console.error("Report parse error", e);
-        }
+    // Parse report if it's a string
+    let reportData = r.report;
+    if (typeof reportData === 'string') {
+      try {
+        reportData = JSON.parse(reportData.replace(/'/g, '"'));
+      } catch (e) {
+        console.error("Report parse error", e);
       }
+    }
+    
+    if (r.type === 'mri' || r.type === 'xray') {
       navigate('/report', { state: { result: { ...r, report: reportData, type: r.type } } });
     } else {
-      // Heart report handling (if exists)
-      navigate('/report', { state: { result: r } });
+      // Heart report handling
+      navigate('/report', { state: { result: { ...r, report: reportData, type: r.type } } });
     }
   };
 

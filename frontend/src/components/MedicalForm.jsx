@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  User, 
-  Activity, 
-  Droplets, 
-  Heart, 
-  Zap, 
-  Wind, 
-  AlertCircle, 
-  Navigation, 
+import {
+  User,
+  Activity,
+  Droplets,
+  Heart,
+  Zap,
+  Wind,
+  AlertCircle,
+  Navigation,
   ChevronRight,
   TrendingUp,
   Brain,
@@ -53,18 +53,18 @@ export default function MedicalForm({ onSubmit, loading }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className={labelClasses}><Dna size={14} /> Age (years)</label>
-            <input 
-              type="number" 
-              name="age" 
-              value={formData.age} 
-              onChange={handleChange} 
+            <input
+              type="number"
+              name="age"
+              value={formData.age}
+              onChange={handleChange}
               className={inputClasses}
             />
           </div>
           <div className="space-y-2">
             <label className={labelClasses}><User size={14} /> Biological Sex</label>
             <div className="flex bg-slate-900/60 p-1 rounded-2xl border border-white/5">
-              <button 
+              <button
                 onClick={() => handleToggle('sex', 1)}
                 className={cn(
                   "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all",
@@ -73,7 +73,7 @@ export default function MedicalForm({ onSubmit, loading }) {
               >
                 Male
               </button>
-              <button 
+              <button
                 onClick={() => handleToggle('sex', 0)}
                 className={cn(
                   "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all",
@@ -99,39 +99,39 @@ export default function MedicalForm({ onSubmit, loading }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className={labelClasses}><Droplets size={14} /> Resting BP (mmHg)</label>
-            <input 
-              type="number" 
-              name="trestbps" 
-              value={formData.trestbps} 
-              onChange={handleChange} 
+            <input
+              type="number"
+              name="trestbps"
+              value={formData.trestbps}
+              onChange={handleChange}
               className={inputClasses}
             />
           </div>
           <div className="space-y-2">
             <label className={labelClasses}><TrendingUp size={14} /> Cholesterol (mg/dl)</label>
-            <input 
-              type="number" 
-              name="chol" 
-              value={formData.chol} 
-              onChange={handleChange} 
+            <input
+              type="number"
+              name="chol"
+              value={formData.chol}
+              onChange={handleChange}
               className={inputClasses}
             />
           </div>
           <div className="space-y-2">
             <label className={labelClasses}><Heart size={14} /> Max Heart Rate</label>
-            <input 
-              type="number" 
-              name="thalach" 
-              value={formData.thalach} 
-              onChange={handleChange} 
+            <input
+              type="number"
+              name="thalach"
+              value={formData.thalach}
+              onChange={handleChange}
               className={inputClasses}
             />
           </div>
           <div className="space-y-2">
             <label className={labelClasses}><Zap size={14} /> Chest Pain Type</label>
-            <select 
-              name="cp" 
-              value={formData.cp} 
+            <select
+              name="cp"
+              value={formData.cp}
               onChange={handleChange}
               className={inputClasses}
             >
@@ -159,13 +159,13 @@ export default function MedicalForm({ onSubmit, loading }) {
               <Cigarette size={16} className="text-slate-500" /> Smoking Status
             </label>
             <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
-              <button 
+              <button
                 onClick={() => handleToggle('smoking', 0)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.smoking === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
               >
                 No
               </button>
-              <button 
+              <button
                 onClick={() => handleToggle('smoking', 1)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.smoking === 1 ? "bg-red-500/80 text-white" : "text-slate-600")}
               >
@@ -179,13 +179,13 @@ export default function MedicalForm({ onSubmit, loading }) {
               <Wind size={16} className="text-slate-500" /> Shortness of Breath
             </label>
             <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
-              <button 
+              <button
                 onClick={() => handleToggle('short_breath', 0)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.short_breath === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
               >
                 No
               </button>
-              <button 
+              <button
                 onClick={() => handleToggle('short_breath', 1)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.short_breath === 1 ? "bg-amber-500/80 text-white" : "text-slate-600")}
               >
@@ -199,13 +199,13 @@ export default function MedicalForm({ onSubmit, loading }) {
               <Activity size={16} className="text-slate-500" /> Fatigue
             </label>
             <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
-              <button 
+              <button
                 onClick={() => handleToggle('fatigue', 0)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.fatigue === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
               >
                 No
               </button>
-              <button 
+              <button
                 onClick={() => handleToggle('fatigue', 1)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.fatigue === 1 ? "bg-amber-500/80 text-white" : "text-slate-600")}
               >
@@ -219,13 +219,13 @@ export default function MedicalForm({ onSubmit, loading }) {
               <AlertCircle size={16} className="text-slate-500" /> Exercise Angina
             </label>
             <div className="flex h-8 bg-slate-900 rounded-full p-1 border border-white/5 w-24">
-              <button 
+              <button
                 onClick={() => handleToggle('exang', 0)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.exang === 0 ? "bg-slate-700 text-white" : "text-slate-600")}
               >
                 No
               </button>
-              <button 
+              <button
                 onClick={() => handleToggle('exang', 1)}
                 className={cn("flex-1 rounded-full text-[10px] font-bold", formData.exang === 1 ? "bg-red-500/80 text-white" : "text-slate-600")}
               >
@@ -240,13 +240,13 @@ export default function MedicalForm({ onSubmit, loading }) {
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stress Level Index</label>
             <span className="text-primary font-bold">{formData.stress_level}/10</span>
           </div>
-          <input 
-            type="range" 
-            name="stress_level" 
-            min="1" 
-            max="10" 
+          <input
+            type="range"
+            name="stress_level"
+            min="1"
+            max="10"
             step="1"
-            value={formData.stress_level} 
+            value={formData.stress_level}
             onChange={handleChange}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
           />
@@ -281,9 +281,9 @@ export default function MedicalForm({ onSubmit, loading }) {
           </div>
           <div className="space-y-2">
             <label className={labelClasses}>Chest Pain Location</label>
-            <select 
-              name="chest_location" 
-              value={formData.chest_location} 
+            <select
+              name="chest_location"
+              value={formData.chest_location}
               onChange={handleChange}
               className={inputClasses}
             >
@@ -295,7 +295,7 @@ export default function MedicalForm({ onSubmit, loading }) {
       </section>
 
       <div className="pt-6 mt-auto">
-        <button 
+        <button
           onClick={onSubmit}
           disabled={loading}
           className="w-full relative group overflow-hidden"

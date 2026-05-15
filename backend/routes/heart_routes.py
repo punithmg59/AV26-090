@@ -232,6 +232,9 @@ async def predict_heart(data: HeartRequest):
             gemini_input["pain_areas"].append("left_arm")
 
         gemini_report = generate_medical_report(gemini_input)
+        
+        prediction_record.report = json.dumps(gemini_report) if isinstance(gemini_report, dict) else str(gemini_report)
+        db.commit()
 
         # =========================
         # RESPONSE
@@ -583,6 +586,7 @@ async def predict_heart_multimodal(
         
         db.add(prediction_record)
         db.commit()
+        db.refresh(prediction_record)
         
         # =========================
         # GEMINI/GROQ API CALL (Optional - can be integrated)
@@ -605,6 +609,9 @@ async def predict_heart_multimodal(
         }
         
         gemini_report = generate_medical_report(gemini_input)
+        
+        prediction_record.report = json.dumps(gemini_report) if isinstance(gemini_report, dict) else str(gemini_report)
+        db.commit()
         
         # =========================
         # RESPONSE

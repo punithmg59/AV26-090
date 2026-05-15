@@ -2,11 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { 
   FileText, Calendar, Clock, Activity, AlertCircle, CheckCircle, 
   ChevronRight, Stethoscope, HeartPulse, User, Image as ImageIcon,
-  Shield, Brain, Zap, Download, Printer
+  Shield, Brain, Zap, Download, Printer, Loader2, Globe
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import useTranslation from '../hooks/useTranslation';
 
 export default function PredictionReport({ result, onBack }) {
+  const { language, t, tReport, translating, isEnglish } = useTranslation();
+
+  // Translated report state
+  const [trReport, setTrReport] = useState(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [result]);
@@ -31,28 +38,55 @@ export default function PredictionReport({ result, onBack }) {
     reportObj = result.llm_report;
   }
 
-  const whatHappened = reportObj.what_happened || result.report || "Diagnostic analysis complete.";
-  const whyHappened = reportObj.why_happened || result.why_happened || "Based on clinical AI pattern recognition.";
+  // Use translated report if available, otherwise original
+  const activeReport = trReport || reportObj;
+
+  const whatHappened = activeReport.what_happened || (typeof result.report === 'string' ? result.report : null) || "Diagnostic analysis complete.";
+  const whyHappened = activeReport.why_happened || result.why_happened || "Based on clinical AI pattern recognition.";
   
   // Next steps and recommendations
-  const nextSteps = reportObj.next_steps || reportObj.recommendations || result.recommendations || [];
-  const healthRecs = result.suggestions || reportObj.health_suggestions || [
+  const nextSteps = activeReport.next_steps || activeReport.recommendations || result.recommendations || [];
+  const healthRecs = result.suggestions || activeReport.health_suggestions || [
     "Maintain a balanced diet.",
     "Stay hydrated and monitor vitals.",
     "Ensure adequate rest and sleep."
   ];
 
-  const doctorRecs = reportObj.doctor_recommendations || [
+  const doctorRecs = activeReport.doctor_recommendations || [
     isHeart ? "Cardiologist - For specialized heart monitoring" :
     type === 'mri' ? "Neurologist - For brain scan evaluation" :
     "Pulmonologist - For respiratory assessment"
   ];
 
-  const urgency = reportObj.urgency_level || result.urgency_level || result.urgency || "Routine";
+  const urgency = activeReport.urgency_level || result.urgency_level || result.urgency || "Routine";
   const riskLevel = result.risk_level || "Standard";
 
-  const tumorSpot = reportObj.tumor_spot || result.tumor_spot || null;
-  const tumorSize = reportObj.tumor_size || result.tumor_size || null;
+  const tumorSpot = activeReport.tumor_spot || result.tumor_spot || null;
+  const tumorSize = activeReport.tumor_size || result.tumor_size || null;
+
+  // Translate report when language changes
+  useEffect(() => {
+    if (isEnglish) {
+      setTrReport(null);
+      return;
+    }
+
+    // Only translate if we have a report object with content
+    if (Object.keys(reportObj).length === 0) return;
+
+    let cancelled = false;
+    setIsTranslating(true);
+
+    tReport(reportObj).then((translated) => {
+      if (!cancelled && translated) {
+        setTrReport(translated);
+      }
+    }).finally(() => {
+      if (!cancelled) setIsTranslating(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [language, reportObj]);
 
   const getUrgencyColor = (urgency) => {
     const u = (urgency || '').toLowerCase();
@@ -68,6 +102,22 @@ export default function PredictionReport({ result, onBack }) {
   return (
     <div className="bg-[#0b1120] rounded-3xl overflow-hidden border border-slate-800/50 shadow-2xl font-sans text-slate-300">
       
+      {/* Translation indicator */}
+      {(isTranslating || translating) && (
+        <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-2 flex items-center gap-2 text-indigo-400 text-xs font-medium">
+          <Loader2 size={14} className="animate-spin" />
+          Translating report...
+        </div>
+      )}
+
+      {/* Language badge */}
+      {!isEnglish && !isTranslating && trReport && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-2 flex items-center gap-2 text-emerald-400 text-xs font-medium">
+          <Globe size={14} />
+          Report translated to {language.toUpperCase()}
+        </div>
+      )}
+
       {/* 1. REPORT HEADER */}
       <div className="border-b border-slate-800 bg-slate-900/50 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
@@ -75,9 +125,9 @@ export default function PredictionReport({ result, onBack }) {
             <Shield className="text-indigo-400" size={24} />
           </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Clinical Diagnostic Report</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t('clinical_diagnostic_report')}</h1>
             <p className="text-sm text-slate-400 mt-1 flex items-center gap-2">
-              <span className="flex items-center gap-1"><Activity size={12}/> AI Analysis Complete</span>
+              <span className="flex items-center gap-1"><Activity size={12}/> {t('ai_analysis_complete')}</span>
               <span>•</span>
               <span>ID: {result.id || `RPT-${Math.floor(Math.random()*10000)}`}</span>
             </p>
@@ -101,7 +151,7 @@ export default function PredictionReport({ result, onBack }) {
           {/* 3. PRIMARY DIAGNOSIS SECTION */}
           <div className="flex flex-col space-y-6">
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex-1">
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Primary Diagnosis</h2>
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">{t('primary_diagnosis')}</h2>
               
               <div className="mb-6">
                 <h3 className="text-3xl md:text-4xl font-bold text-white mb-2">{prediction}</h3>
@@ -113,11 +163,11 @@ export default function PredictionReport({ result, onBack }) {
 
               <div className="grid grid-cols-2 gap-4 border-t border-slate-800/80 pt-6">
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">AI Confidence</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('ai_confidence')}</p>
                   <p className="text-2xl font-semibold text-slate-200">{typeof confidence === 'number' ? confidence.toFixed(1) : confidence}%</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Risk Level</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('risk_level')}</p>
                   <p className="text-2xl font-semibold text-slate-200">{riskLevel}</p>
                 </div>
               </div>
@@ -126,16 +176,16 @@ export default function PredictionReport({ result, onBack }) {
 
           {/* 2. UPLOADED DOCUMENT PREVIEW */}
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Document Source</h2>
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">{t('document_source')}</h2>
             
             {isImageScan ? (
               <div className="flex-1 flex flex-col">
                 <div className="flex gap-4 flex-1">
                   <div className="w-1/2 rounded-xl bg-black/40 border border-slate-800 overflow-hidden flex flex-col">
                   <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                    <span>Original Scan</span>
+                    <span>{t('original_scan')}</span>
                   </div>
-                  <div className="flex-1 relative">
+                  <div className="flex-1 relative min-h-[200px]">
                     {result.image_path ? (
                       <img src={`${API_URL}${result.image_path.startsWith('/') ? '' : '/'}${result.image_path}`} alt="Scan" className="absolute inset-0 w-full h-full object-cover" />
                     ) : (
@@ -145,9 +195,9 @@ export default function PredictionReport({ result, onBack }) {
                 </div>
                 <div className="w-1/2 rounded-xl bg-black/40 border border-slate-800 overflow-hidden flex flex-col">
                   <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                    <span>AI Heatmap</span>
+                    <span>{t('ai_heatmap')}</span>
                   </div>
-                  <div className="flex-1 relative">
+                  <div className="flex-1 relative min-h-[200px]">
                     {result.heatmap_path ? (
                       <img src={`${API_URL}${result.heatmap_path.startsWith('/') ? '' : '/'}${result.heatmap_path}`} alt="Heatmap" className="absolute inset-0 w-full h-full object-cover" />
                     ) : (
@@ -159,11 +209,11 @@ export default function PredictionReport({ result, onBack }) {
               {tumorSpot && tumorSpot !== 'N/A' && type === 'mri' && (
                 <div className="grid grid-cols-2 gap-3 text-sm mt-4">
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-slate-500 text-xs block">Tumor Location</span>
+                    <span className="text-slate-500 text-xs block">{t('tumor_location')}</span>
                     <span className="text-slate-300 font-medium">{tumorSpot}</span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-slate-500 text-xs block">Estimated Size</span>
+                    <span className="text-slate-500 text-xs block">{t('estimated_size')}</span>
                     <span className="text-slate-300 font-medium">{tumorSize}</span>
                   </div>
                 </div>
@@ -180,11 +230,11 @@ export default function PredictionReport({ result, onBack }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-slate-500 text-xs block">Blood Pressure</span>
+                    <span className="text-slate-500 text-xs block">{t('blood_pressure')}</span>
                     <span className="text-slate-300 font-medium">{result.blood_pressure || (result.ocr_findings && result.ocr_findings.blood_pressure) || 'N/A'}</span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <span className="text-slate-500 text-xs block">Heart Rate</span>
+                    <span className="text-slate-500 text-xs block">{t('heart_rate')}</span>
                     <span className="text-slate-300 font-medium">{(result.heart_rate || (result.ocr_findings && result.ocr_findings.heart_rate)) ? `${result.heart_rate || result.ocr_findings.heart_rate} bpm` : 'N/A'}</span>
                   </div>
                 </div>
@@ -202,7 +252,7 @@ export default function PredictionReport({ result, onBack }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6">
             <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <Activity className="text-indigo-400" size={18} /> What Happened
+              <Activity className="text-indigo-400" size={18} /> {t('what_happened')}
             </h2>
             <p className="text-slate-400 text-sm leading-relaxed">
               {typeof whatHappened === 'string' ? whatHappened : JSON.stringify(whatHappened)}
@@ -211,7 +261,7 @@ export default function PredictionReport({ result, onBack }) {
           
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6">
             <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <Brain className="text-indigo-400" size={18} /> Why It Happened
+              <Brain className="text-indigo-400" size={18} /> {t('why_happened')}
             </h2>
             <p className="text-slate-400 text-sm leading-relaxed">
               {typeof whyHappened === 'string' ? whyHappened : "Analysis indicates patterns aligning with the identified condition. Refer to clinical guidelines for root cause determination."}
@@ -222,7 +272,7 @@ export default function PredictionReport({ result, onBack }) {
         {/* 6. WHAT TO DO NEXT */}
         <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6">
           <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <CheckCircle className="text-emerald-400" size={18} /> What To Do Next
+            <CheckCircle className="text-emerald-400" size={18} /> {t('what_to_do_next')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {Array.isArray(nextSteps) && nextSteps.length > 0 ? nextSteps.map((step, idx) => (
@@ -240,7 +290,7 @@ export default function PredictionReport({ result, onBack }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6">
             <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Stethoscope className="text-blue-400" size={18} /> Specialist Recommendations
+              <Stethoscope className="text-blue-400" size={18} /> {t('specialist_recommendations')}
             </h2>
             <ul className="space-y-3">
               {Array.isArray(doctorRecs) ? doctorRecs.map((rec, idx) => (
@@ -256,7 +306,7 @@ export default function PredictionReport({ result, onBack }) {
           
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-6">
             <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <HeartPulse className="text-rose-400" size={18} /> Health Recommendations
+              <HeartPulse className="text-rose-400" size={18} /> {t('health_recommendations')}
             </h2>
             <ul className="space-y-3">
               {Array.isArray(healthRecs) ? healthRecs.map((rec, idx) => (
@@ -274,7 +324,7 @@ export default function PredictionReport({ result, onBack }) {
         {/* FOOTER */}
         <div className="pt-6 border-t border-slate-800/80 text-center">
           <p className="text-xs text-slate-600 uppercase tracking-widest font-semibold">
-            This AI-generated report is for informational purposes only and does not replace professional medical advice.
+            {t('disclaimer')}
           </p>
         </div>
 

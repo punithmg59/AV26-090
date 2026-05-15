@@ -12,6 +12,7 @@ from routes.history_routes import router as history_router
 from routes.analytics_routes import router as analytics_router
 from routes.xray_routes import router as xray_router
 from routes.brain_routes import router as brain_router
+from routes.translation_routes import router as translation_router
 
 
 app = FastAPI(
@@ -46,6 +47,7 @@ app.include_router(history_router)
 app.include_router(analytics_router)
 app.include_router(xray_router)
 app.include_router(brain_router)
+app.include_router(translation_router)
 
 
 # =========================

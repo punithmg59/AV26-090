@@ -130,7 +130,7 @@ async def process_brain_mri(file: UploadFile):
                 prediction=pred_class,
                 confidence=confidence,
                 risk_level=risk_level,
-                image_path=image_path,
+                image_path=f"uploads/mri/{image_filename}",
                 report=json.dumps(report_json) if isinstance(report_json, dict) else str(report_json),
                 doctor_suggestions=json.dumps(report_json.get("recommendations", [])) if isinstance(report_json, dict) else "[]"
             )

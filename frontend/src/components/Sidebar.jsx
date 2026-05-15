@@ -7,19 +7,21 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useStore from '../store/useStore';
+import useTranslation from '../hooks/useTranslation';
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Heart, label: 'Predictor', path: '/predictor' },
-  { icon: Brain, label: 'Brain Tumor', path: '/brain-tumor' },
-  { icon: FileText, label: 'Reports History', path: '/history' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: Lightbulb, label: 'Health Tips', path: '/health-tips' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+const navItemsDef = [
+  { icon: LayoutDashboard, labelKey: 'dashboard', fallback: 'Dashboard', path: '/' },
+  { icon: Heart, labelKey: 'predictor', fallback: 'Predictor', path: '/predictor' },
+  { icon: Brain, labelKey: 'brain_tumor', fallback: 'Brain Tumor', path: '/brain-tumor' },
+  { icon: FileText, labelKey: 'reports_history', fallback: 'Reports History', path: '/history' },
+  { icon: BarChart3, labelKey: 'analytics', fallback: 'Analytics', path: '/analytics' },
+  { icon: Lightbulb, labelKey: 'health_tips', fallback: 'Health Tips', path: '/health-tips' },
+  { icon: Settings, labelKey: 'settings', fallback: 'Settings', path: '/settings' },
 ];
 
 export default function Sidebar() {
   const { sidebarOpen, toggleSidebar, theme } = useStore();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -59,8 +61,9 @@ export default function Sidebar() {
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItemsDef.map((item) => {
           const isActive = location.pathname === item.path;
+          const label = t(item.labelKey) || item.fallback;
           return (
             <button
               key={item.path}
@@ -70,7 +73,7 @@ export default function Sidebar() {
                   ? `${activeBg} ${activeBorder}`
                   : `border-transparent ${textMuted} ${hoverBg}`
               }`}
-              title={item.label}
+              title={label}
             >
               <item.icon size={20} className="shrink-0" />
               <AnimatePresence>
@@ -81,7 +84,7 @@ export default function Sidebar() {
                     exit={{ opacity: 0 }}
                     className="whitespace-nowrap overflow-hidden"
                   >
-                    {item.label}
+                    {label}
                   </motion.span>
                 )}
               </AnimatePresence>

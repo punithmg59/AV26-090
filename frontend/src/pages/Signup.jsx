@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 const Signup = () => {
   const [formData, setFormData] = useState({
     full_name: '',
+    username: '',
     email: '',
     phone: '',
     password: '',
@@ -39,14 +40,24 @@ const Signup = () => {
     console.time('signup-button-to-redirect');
 
     try {
-      await signUp({
+      const response = await signUp({
         email: formData.email,
         password: formData.password,
         full_name: formData.full_name,
-        phone: formData.phone
+        phone: formData.phone,
+        username: formData.username
       });
-      toast.success('Account Created');
-      navigate('/', { replace: true });
+
+      if (response?.user && !response?.session) {
+        toast.success('Account Created! Please check your email to confirm.');
+        navigate('/login');
+      } else {
+        toast.success('Account Created');
+        // Small delay to ensure AuthContext updates
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 150);
+      }
     } catch (error) {
       toast.error(error.message || 'Signup Failed');
     } finally {
@@ -90,6 +101,23 @@ const Signup = () => {
                     onChange={handleChange}
                     className="block w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none text-white placeholder:text-slate-600"
                     placeholder="John Doe"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300 ml-1">Username</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-indigo-400 transition-colors">
+                    <User size={18} />
+                  </div>
+                  <input
+                    name="username"
+                    required
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="block w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none text-white placeholder:text-slate-600"
+                    placeholder="johndoe123"
                   />
                 </div>
               </div>

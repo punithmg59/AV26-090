@@ -102,8 +102,8 @@ async def process_chest_xray(file: UploadFile):
                 prediction=pred_class,
                 confidence=confidence,
                 risk_level=risk_level,
-                image_path=image_path,
-                heatmap_path=final_heatmap_path,
+                image_path=f"uploads/xray/{image_filename}",
+                heatmap_path=f"uploads/xray/{heatmap_filename}" if final_heatmap_path else None,
                 report=json.dumps(report_json) if report_json else "{}"
             )
             db.add(db_record)
