@@ -132,7 +132,7 @@ export default function Dashboard() {
                     }`} />
                     <div>
                       <p className={`text-sm font-medium ${isLight ? 'text-gray-800' : 'text-white'}`}>
-                        {r.disease_type === 'heart' ? 'Heart Disease' : 'Brain Tumor'} Assessment
+                        {r.disease_type === 'heart' ? 'Heart Disease' : r.disease_type === 'xray' ? 'Chest X-Ray' : 'Brain Tumor'} Assessment
                       </p>
                       <p className={`text-xs ${muted}`}>
                         <Clock size={10} className="inline mr-1" />

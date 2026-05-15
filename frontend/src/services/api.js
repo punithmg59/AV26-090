@@ -12,6 +12,7 @@ export const getHistory = (params = {}) => api.get('/api/history/', { params });
 export const getHistoryDetail = (id) => api.get(`/api/history/${id}`);
 export const deleteHistory = (id) => api.delete(`/api/history/${id}`);
 export const clearHistory = () => api.delete('/api/history/');
+export const getMriHistory = () => api.get('/predict/mri-history');
 
 // Analytics
 export const getAnalyticsSummary = () => api.get('/api/analytics/summary');

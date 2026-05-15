@@ -92,3 +92,31 @@ class ChestXrayPrediction(Base):
     report = Column(String)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+# =========================
+# BRAIN TUMOR PREDICTIONS TABLE
+# =========================
+
+class BrainTumorPrediction(Base):
+
+    __tablename__ = "brain_tumor_predictions"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, default=1)
+
+    prediction = Column(String)
+
+    confidence = Column(Float)
+
+    risk_level = Column(String)
+
+    image_path = Column(String)
+
+    report = Column(String)
+
+    pdf_path = Column(String)
+
+    doctor_suggestions = Column(String)
+
+    created_at = Column(DateTime, default=datetime.utcnow)

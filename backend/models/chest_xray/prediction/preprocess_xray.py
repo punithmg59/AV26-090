@@ -1,55 +1,67 @@
 import numpy as np
-import cv2
-from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 def preprocess_image(image_bytes, target_size=(224, 224)):
     """
-    Preprocess image bytes for EfficientNetB0 prediction.
+    Production-ready image preprocessing using PIL.
+    Ensures input shape is (1, 224, 224, 3) and values are normalized.
     """
-    # Load image from bytes
-    img = Image.open(io.BytesIO(image_bytes))
-    
-    # Convert to RGB if grayscale
-    if img.mode != 'RGB':
-        img = img.convert('RGB')
+    try:
+        # Load image
+        img = Image.open(io.BytesIO(image_bytes))
+        logger.info(f"🔍 PREPROCESS: Loaded {img.format} image, Size: {img.size}, Mode: {img.mode}")
         
-    # Resize
-    img = img.resize(target_size)
-    
-    # Convert to array
-    img_array = img_to_array(img)
-    
-    # Rescale (EfficientNet expects 0-255 or 0-1 depending on configuration, 
-    # but since we used 1./255 in ImageDataGenerator, we must do it here too)
-    img_array = img_array / 255.0
-    
-    # Add batch dimension
-    img_array = np.expand_dims(img_array, axis=0)
-    
-    return img_array
+        # Convert to RGB (Crucial for medical images that might be grayscale)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+            logger.info("🔍 PREPROCESS: Converted to RGB")
+            
+        # Resize using Lanczos for high-quality downsampling
+        img = img.resize(target_size, Image.Resampling.LANCZOS)
+        
+        # Convert to NumPy array
+        img_array = np.array(img).astype('float32')
+        
+        # NOTE: Modern Keras models (EfficientNet/DenseNet) often include 
+        # an internal Rescaling layer. Manual division by 255.0 can 
+        # lead to vanishingly small inputs and biased predictions.
+        # Based on variance testing, we provide raw [0-255] pixels.
+        # img_array = img_array / 255.0 
+        
+        # Ensure correct shape: add batch dimension (1, 224, 224, 3)
+        img_array = np.expand_dims(img_array, axis=0)
+        
+        logger.info(f"🔍 PREPROCESS: Final tensor stats - Mean: {np.mean(img_array):.4f}, Std: {np.std(img_array):.4f}")
+        return img_array
+    except Exception as e:
+        logger.error(f"Preprocessing failed: {e}")
+        raise ValueError(f"Invalid image format or processing error: {str(e)}")
 
 def decode_prediction(prediction_prob, labels_dict=None):
     """
-    Decode binary prediction probability.
+    Robustly decodes binary (Sigmoid) or categorical (Softmax) predictions.
     """
     if labels_dict is None:
         labels_dict = {0: "NORMAL", 1: "PNEUMONIA"}
         
-    # Assuming sigmoid output (1 node)
-    if isinstance(prediction_prob, (list, np.ndarray)) and len(prediction_prob.shape) > 1 and prediction_prob.shape[1] == 1:
+    # Handle Sigmoid (Binary, 1 node)
+    # prediction_prob is usually [[prob]]
+    if prediction_prob.shape[-1] == 1:
         prob = float(prediction_prob[0][0])
         class_idx = 1 if prob > 0.5 else 0
         confidence = prob if class_idx == 1 else 1.0 - prob
     else:
-        # Categorical
+        # Handle Softmax (Categorical, 2+ nodes)
         probs = prediction_prob[0]
-        class_idx = np.argmax(probs)
+        class_idx = int(np.argmax(probs))
         confidence = float(probs[class_idx])
         
     return {
         "class_id": class_idx,
-        "class_name": labels_dict.get(class_idx, str(class_idx)),
-        "confidence": confidence * 100.0
+        "class_name": labels_dict.get(class_idx, "UNKNOWN"),
+        "confidence": float(confidence * 100.0)
     }

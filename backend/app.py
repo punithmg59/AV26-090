@@ -1,5 +1,11 @@
+import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+# Ensure the backend directory is in sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from routes.heart_routes import router as heart_router
 from routes.history_routes import router as history_router
@@ -11,6 +17,10 @@ app = FastAPI(
     title="Healthcare AI API",
     version="2.0.0"
 )
+
+# Mount Static Files for images/heatmaps
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 # =========================
 # CORS

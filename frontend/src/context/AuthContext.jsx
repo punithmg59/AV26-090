@@ -32,35 +32,67 @@ export const AuthProvider = ({ children }) => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      console.log("🔐 Auth: Starting initialization...");
       console.time('auth-init');
-      const { data: { session } } = await supabase.auth.getSession();
       
-      if (mounted) {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-          await fetchProfile(currentUser.id);
+      // Failsafe timeout: Force stop loading after 8 seconds
+      const failsafe = setTimeout(() => {
+        if (mounted && loading) {
+          console.warn("⚠️ Auth: Failsafe triggered. Force-stopping loading state.");
+          setLoading(false);
         }
-        setLoading(false);
-        console.timeEnd('auth-init');
+      }, 8000);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("🔐 Auth: Session retrieved:", session ? "Active" : "None");
+        
+        if (mounted) {
+          const currentUser = session?.user ?? null;
+          setUser(currentUser);
+          if (currentUser) {
+            console.log("🔐 Auth: Fetching profile for:", currentUser.id);
+            await fetchProfile(currentUser.id);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Auth: Initialization error:', err);
+      } finally {
+        clearTimeout(failsafe);
+        if (mounted) {
+          setLoading(false);
+          console.log("🔐 Auth: Initialization complete.");
+          console.timeEnd('auth-init');
+        }
       }
     };
 
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`🔐 Auth: onAuthStateChange [${event}]`);
       if (!mounted) return;
       
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        if (currentUser) await fetchProfile(currentUser.id);
-      } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
+      try {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          if (currentUser) {
+            console.log("🔐 Auth: Fetching profile on event...");
+            await fetchProfile(currentUser.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error("❌ Auth: Change listener error:", err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          console.log("🔐 Auth: Loading state cleared by event.");
+        }
       }
-      
-      setLoading(false);
     });
 
     return () => {

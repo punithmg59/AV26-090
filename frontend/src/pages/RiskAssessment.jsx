@@ -19,8 +19,12 @@ export default function RiskAssessment() {
   useEffect(() => {
     const chestSelected = selectedAreas.some(a => a.includes('chest') || a === 'upper_abdomen') ? 1 : 0;
     const leftArmSelected = selectedAreas.some(a => a === 'left_arm' || a === 'left_forearm' || a === 'left_upper_arm') ? 1 : 0;
-    setFormData({ chest_location: chestSelected, left_arm_pain: leftArmSelected });
-  }, [selectedAreas, setFormData]);
+    
+    // Only update if values actually changed to avoid infinite re-render loop
+    if (formData.chest_location !== chestSelected || formData.left_arm_pain !== leftArmSelected) {
+      setFormData({ chest_location: chestSelected, left_arm_pain: leftArmSelected });
+    }
+  }, [selectedAreas, formData.chest_location, formData.left_arm_pain, setFormData]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();

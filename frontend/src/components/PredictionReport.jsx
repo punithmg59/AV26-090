@@ -23,16 +23,22 @@ export default function PredictionReport({ result, onBack }) {
     window.scrollTo(0, 0);
   }, [result]);
 
-  const riskScore = result?.risk_score || 0;
-  const riskLevel = result?.risk_level || 'Unknown';
-  const isEmergency = result?.emergency || riskScore >= 85;
-  const isHighRisk = riskLevel.includes('HIGH') || riskScore >= 65;
+  // Unified Data Mapping
+  const isXray = result?.type === 'xray';
+  const riskScore = isXray ? (result?.confidence || 0) : (result?.risk_score || 0);
+  const riskLevel = isXray ? (result?.prediction || 'Unknown') : (result?.risk_level || 'Unknown');
+  
+  const isEmergency = result?.emergency || riskScore >= 85 || result?.risk_level?.includes('HIGH') || result?.prediction === 'PNEUMONIA';
+  const isHighRisk = riskLevel.includes('HIGH') || riskLevel === 'PNEUMONIA' || riskScore >= 65;
   const isModerateRisk = riskLevel.includes('MODERATE') || (riskScore >= 35 && riskScore < 65);
   
-  const llm = result?.llm_report || {};
+  const llm = isXray ? (result?.report || {}) : (result?.llm_report || {});
   const ocr = result?.ocr_findings || {};
   const symptoms = result?.symptoms || [];
   const painAreas = result?.selected_pain_areas || [];
+
+  // API base for images
+  const API_URL = 'http://127.0.0.1:8000';
 
   const getRiskTheme = () => {
     if (isHighRisk) return {
@@ -41,7 +47,7 @@ export default function PredictionReport({ result, onBack }) {
       border: 'border-red-500/30',
       shadow: 'shadow-[0_0_30px_rgba(239,68,68,0.2)]',
       accent: 'bg-red-500',
-      label: 'High Risk Alert',
+      label: 'Critical Detection',
       icon: <AlertCircle className="text-red-400" size={32} />
     };
     if (isModerateRisk) return {
@@ -59,7 +65,7 @@ export default function PredictionReport({ result, onBack }) {
       border: 'border-emerald-500/30',
       shadow: 'shadow-[0_0_30px_rgba(16,185,129,0.2)]',
       accent: 'bg-emerald-500',
-      label: 'Optimal Health',
+      label: 'Optimal Scan',
       icon: <CheckCircle className="text-emerald-400" size={32} />
     };
   };
@@ -117,23 +123,57 @@ export default function PredictionReport({ result, onBack }) {
           </div>
         </motion.div>
 
-        {/* Biometric Markers Panel */}
+        {/* Biometric Markers Panel / X-ray Visualization */}
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="lg:col-span-5 glass-card rounded-[2.5rem] p-10 border border-white/5 flex flex-col"
         >
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-2">
-            <Activity size={14} className="text-primary" />
-            Biometric Link Analysis
+            {isXray ? <Zap size={14} className="text-primary" /> : <Activity size={14} className="text-primary" />}
+            {isXray ? 'AI Visualization Core' : 'Biometric Link Analysis'}
           </h3>
           
-          <div className="grid grid-cols-2 gap-4 flex-1">
-            <MarkerCard label="Resting BP" value={ocr.blood_pressure || '120/80'} icon={<Droplets size={18} className="text-blue-400" />} />
-            <MarkerCard label="Cholesterol" value={ocr.cholesterol ? `${ocr.cholesterol} mg/dL` : 'Normal'} icon={<Activity size={18} className="text-emerald-400" />} />
-            <MarkerCard label="Heart Rate" value={ocr.heart_rate ? `${ocr.heart_rate} bpm` : '72 bpm'} icon={<HeartPulse size={18} className="text-red-400" />} />
-            <MarkerCard label="Glucose" value={ocr.glucose ? `${ocr.glucose} mg/dL` : 'Optimal'} icon={<Zap size={18} className="text-amber-400" />} />
-          </div>
+          {isXray ? (
+            <div className="space-y-6 flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Original Scan</p>
+                  <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40 aspect-square flex items-center justify-center">
+                    <img 
+                      src={`${API_URL}/${result.image_path}`} 
+                      alt="Original X-ray" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Scan+Not+Found'; }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">AI Heatmap</p>
+                  <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40 aspect-square flex items-center justify-center">
+                    <img 
+                      src={`${API_URL}/${result.heatmap_path}`} 
+                      alt="AI Heatmap" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Analysis+In+Progress'; }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20">
+                <p className="text-[11px] text-primary font-bold leading-relaxed text-center">
+                  Grad-CAM analysis highlights areas used by the neural network for prediction.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 flex-1">
+              <MarkerCard label="Resting BP" value={ocr.blood_pressure || '120/80'} icon={<Droplets size={18} className="text-blue-400" />} />
+              <MarkerCard label="Cholesterol" value={ocr.cholesterol ? `${ocr.cholesterol} mg/dL` : 'Normal'} icon={<Activity size={18} className="text-emerald-400" />} />
+              <MarkerCard label="Heart Rate" value={ocr.heart_rate ? `${ocr.heart_rate} bpm` : '72 bpm'} icon={<HeartPulse size={18} className="text-red-400" />} />
+              <MarkerCard label="Glucose" value={ocr.glucose ? `${ocr.glucose} mg/dL` : 'Optimal'} icon={<Zap size={18} className="text-amber-400" />} />
+            </div>
+          )}
 
           <div className="mt-8 pt-8 border-t border-white/5">
             <div className="flex items-start gap-4">
@@ -141,7 +181,7 @@ export default function PredictionReport({ result, onBack }) {
                 <Brain size={16} className="text-primary" />
               </div>
               <p className="text-sm text-slate-400 leading-relaxed italic">
-                {llm.why_happened || "Analyzing systemic correlations between biomarkers."}
+                {llm.why_happened || "Analyzing systemic correlations between clinical markers."}
               </p>
             </div>
           </div>
@@ -171,7 +211,7 @@ export default function PredictionReport({ result, onBack }) {
               {llm.what_happened || "Processing medical report insights..."}
             </p>
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
-              {llm.ai_insights?.map((insight, idx) => (
+              {(isXray ? llm.recommendations : llm.ai_insights)?.map((insight, idx) => (
                 <div key={idx} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 text-xs font-bold border border-white/5 flex items-center gap-2 hover:bg-white/10 transition-colors">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {insight}
                 </div>
@@ -190,10 +230,10 @@ export default function PredictionReport({ result, onBack }) {
         >
           <h3 className="text-2xl font-black text-white mb-10 flex items-center gap-4">
             <ClipboardCheck className="text-emerald-400" />
-            Neural Action Protocol
+            Clinical Action Protocol
           </h3>
           <div className="space-y-4">
-            {llm.next_steps?.map((step, idx) => (
+            {(isXray ? llm.recommendations : llm.next_steps)?.map((step, idx) => (
               <div key={idx} className="flex items-center justify-between p-6 bg-white/5 border border-white/5 rounded-[2rem] group hover:bg-white/10 hover:border-emerald-500/30 transition-all duration-300">
                 <div className="flex items-center gap-5">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-sm">
@@ -207,7 +247,7 @@ export default function PredictionReport({ result, onBack }) {
           </div>
           <div className="mt-10 p-8 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-center">
              <p className="text-emerald-400 font-bold italic text-lg">
-               "{llm.improvement_potential || 'Your proactive engagement is the key to recovery.'}"
+               "{isXray ? `Urgency Level: ${llm.urgency_level || 'Routine'}` : (llm.improvement_potential || 'Your proactive engagement is the key to recovery.')}"
              </p>
           </div>
         </motion.div>

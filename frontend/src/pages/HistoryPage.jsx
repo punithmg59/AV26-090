@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Trash2, Eye, Clock, AlertTriangle, Heart, Loader2, Inbox } from 'lucide-react';
+import { Trash2, Eye, Clock, Heart, Loader2, Inbox } from 'lucide-react';
 import useStore from '../store/useStore';
-import { getHistory, deleteHistory, clearHistory } from '../services/api';
+import { getHistory } from '../services/api';
+import { getXrayHistory } from '../services/xrayApi';
+import { useNavigate } from 'react-router-dom';
 
 export default function HistoryPage() {
   const { theme } = useStore();
@@ -10,6 +12,7 @@ export default function HistoryPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const navigate = useNavigate();
 
   const card = isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-slate-900 border border-slate-800';
   const muted = isLight ? 'text-gray-500' : 'text-slate-400';
@@ -19,9 +22,30 @@ export default function HistoryPage() {
     try {
       const params = {};
       if (filter !== 'all') params.disease_type = filter;
-      const res = await getHistory(params);
-      setRecords(res.data.history || []);
-      setTotal(res.data.total || 0);
+      
+      // Fetch all history types
+      const [heartRes, xrayRes, mriRes] = await Promise.all([
+        getHistory(params),
+        getXrayHistory(),
+        getMriHistory()
+      ]);
+
+      const heartRecords = (heartRes.data.history || []).map(r => ({ ...r, type: 'heart' }));
+      const xrayRecords = (xrayRes || []).map(r => ({ ...r, type: 'xray' }));
+      const mriRecords = (mriRes.data || []).map(r => ({ ...r, type: 'mri' }));
+
+      let combined = [...heartRecords, ...xrayRecords, ...mriRecords];
+      
+      // Filter if needed
+      if (filter === 'heart') combined = combined.filter(r => r.type === 'heart');
+      if (filter === 'xray') combined = combined.filter(r => r.type === 'xray');
+      if (filter === 'mri') combined = combined.filter(r => r.type === 'mri');
+
+      // Sort by date
+      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setRecords(combined);
+      setTotal(combined.length);
     } catch (e) {
       console.error('History fetch error:', e);
     } finally {
@@ -31,51 +55,45 @@ export default function HistoryPage() {
 
   useEffect(() => { fetchHistory(); }, [filter]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this record?')) return;
-    try {
-      await deleteHistory(id);
-      setRecords((prev) => prev.filter((r) => r.id !== id));
-      setTotal((t) => t - 1);
-    } catch (e) {
-      alert('Failed to delete');
-    }
-  };
-
-  const handleClearAll = async () => {
-    if (!window.confirm('Delete ALL prediction history? This cannot be undone.')) return;
-    try {
-      await clearHistory();
-      setRecords([]);
-      setTotal(0);
-    } catch (e) {
-      alert('Failed to clear history');
+  const handleViewReport = (r) => {
+    if (r.type === 'mri' || r.type === 'xray') {
+      // Parse report if it's a string
+      let reportData = r.report;
+      if (typeof reportData === 'string') {
+        try {
+          reportData = JSON.parse(reportData.replace(/'/g, '"'));
+        } catch (e) {
+          console.error("Report parse error", e);
+        }
+      }
+      navigate('/report', { state: { result: { ...r, report: reportData, type: r.type } } });
+    } else {
+      // Heart report handling (if exists)
+      navigate('/report', { state: { result: r } });
     }
   };
 
   const riskBadge = (level) => {
-    if (level === 'HIGH RISK') return isLight ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20';
-    if (level === 'MODERATE RISK') return isLight ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    const l = (level || '').toUpperCase();
+    if (l.includes('HIGH') || l === 'PNEUMONIA' || l === 'TUMOR') return isLight ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20';
+    if (l.includes('MODERATE')) return isLight ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
     return isLight ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
   };
+
+  const API_URL = 'http://127.0.0.1:8000';
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Reports History</h1>
-          <p className={`text-sm mt-1 ${muted}`}>{total} total prediction records</p>
+          <p className={`text-sm mt-1 ${muted}`}>{total} total diagnostic records</p>
         </div>
-        {records.length > 0 && (
-          <button onClick={handleClearAll} className="text-xs font-semibold text-red-500 hover:underline flex items-center gap-1">
-            <Trash2 size={12} /> Clear All
-          </button>
-        )}
       </div>
 
       {/* Filters */}
       <div className="flex gap-2">
-        {['all', 'heart'].map((f) => (
+        {['all', 'heart', 'xray', 'mri'].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -85,7 +103,7 @@ export default function HistoryPage() {
                 : `${isLight ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-slate-700 text-slate-400 hover:bg-slate-800'}`
             }`}
           >
-            {f === 'all' ? 'All' : 'Heart Disease'}
+            {f === 'all' ? 'All' : f === 'heart' ? 'Heart' : f === 'xray' ? 'X-Ray' : 'MRI'}
           </button>
         ))}
       </div>
@@ -98,22 +116,31 @@ export default function HistoryPage() {
       ) : records.length === 0 ? (
         <div className={`${card} rounded-xl p-12 text-center`}>
           <Inbox size={48} className={`mx-auto mb-4 ${muted}`} />
-          <p className={`text-sm font-medium ${muted}`}>No prediction records found</p>
+          <p className={`text-sm font-medium ${muted}`}>No diagnostic records found</p>
           <p className={`text-xs mt-1 ${muted}`}>Start an assessment to see history here</p>
         </div>
       ) : (
         <div className="space-y-3">
           {records.map((r) => (
-            <div key={r.id} className={`${card} rounded-xl p-5 flex items-center justify-between`}>
+            <div key={`${r.type}-${r.id}`} className={`${card} rounded-xl p-5 flex items-center justify-between hover:scale-[1.01] transition-all`}>
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden ${
                   isLight ? 'bg-gray-100' : 'bg-slate-800'
                 }`}>
-                  <Heart size={20} className="text-red-500" />
+                  {(r.type === 'xray' || r.type === 'mri') ? (
+                    <img 
+                      src={`${API_URL}/${r.image_path}`} 
+                      className="w-full h-full object-cover" 
+                      alt="Thumbnail"
+                      onError={(e) => { e.target.src = 'https://via.placeholder.com/50?text=IMG'; }}
+                    />
+                  ) : (
+                    <Heart size={20} className="text-red-500" />
+                  )}
                 </div>
                 <div>
                   <p className={`text-sm font-semibold ${isLight ? 'text-gray-800' : 'text-white'}`}>
-                    Heart Disease Assessment #{r.id}
+                    {r.type === 'xray' ? 'Chest X-Ray Analysis' : r.type === 'mri' ? 'Brain MRI Analysis' : 'Heart Disease Assessment'} #{r.id}
                   </p>
                   <div className={`flex items-center gap-3 text-xs mt-1 ${muted}`}>
                     <span className="flex items-center gap-1"><Clock size={10} />{r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A'}</span>
@@ -122,11 +149,14 @@ export default function HistoryPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${riskBadge(r.risk_level)}`}>
-                  {r.risk_level}
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${riskBadge(r.risk_level || r.prediction)}`}>
+                  {r.risk_level || r.prediction}
                 </span>
-                <button onClick={() => handleDelete(r.id)} className={`p-2 rounded-lg ${isLight ? 'hover:bg-gray-100' : 'hover:bg-slate-800'} text-red-400 transition-colors`}>
-                  <Trash2 size={14} />
+                <button 
+                  onClick={() => handleViewReport(r)}
+                  className={`p-2 rounded-lg ${isLight ? 'hover:bg-gray-100' : 'hover:bg-slate-800'} text-primary transition-colors`}
+                >
+                  <Eye size={16} />
                 </button>
               </div>
             </div>

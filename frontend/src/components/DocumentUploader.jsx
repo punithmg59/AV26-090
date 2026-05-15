@@ -13,6 +13,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useNavigate } from 'react-router-dom';
+import { uploadXray } from '../services/xrayApi';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -27,6 +29,7 @@ const recentFiles = [
 export default function DocumentUploader({ onFilesSelected }) {
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState([]);
+  const navigate = useNavigate();
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -49,7 +52,7 @@ export default function DocumentUploader({ onFilesSelected }) {
     addFiles(selectedFiles);
   };
 
-  const addFiles = (newFiles) => {
+  const addFiles = async (newFiles) => {
     const processedFiles = newFiles.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -61,22 +64,48 @@ export default function DocumentUploader({ onFilesSelected }) {
     }));
     
     setFiles(prev => [...prev, ...processedFiles]);
-    onFilesSelected(newFiles);
+    if (onFilesSelected) onFilesSelected(newFiles);
 
-    // Simulate upload progress
-    processedFiles.forEach(file => {
-      let prog = 0;
-      const interval = setInterval(() => {
-        prog += Math.random() * 30;
-        if (prog >= 100) {
-          prog = 100;
-          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, progress: 100, status: 'completed' } : f));
-          clearInterval(interval);
+    for (const fileObj of processedFiles) {
+      try {
+        // Only process X-ray images for now
+        const isImage = fileObj.originalFile.type.startsWith('image/');
+        
+        if (isImage) {
+          // Actual upload to AI backend
+          const result = await uploadXray(fileObj.originalFile);
+          
+          setFiles(prev => prev.map(f => f.id === fileObj.id ? { 
+            ...f, 
+            progress: 100, 
+            status: 'completed' 
+          } : f));
+
+          // Navigate to report page with result
+          setTimeout(() => {
+            navigate('/report', { state: { result: {
+              ...result,
+              type: 'xray' // Mark as X-ray for PredictionReport
+            } } });
+          }, 800);
         } else {
-          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, progress: prog } : f));
+          // Simulated progress for non-image files
+          let prog = 0;
+          const interval = setInterval(() => {
+            prog += 20;
+            if (prog >= 100) {
+              setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f));
+              clearInterval(interval);
+            } else {
+              setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, progress: prog } : f));
+            }
+          }, 300);
         }
-      }, 400);
-    });
+      } catch (error) {
+        console.error("Upload failed for", fileObj.name, error);
+        setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: 'error', error: error.detail } : f));
+      }
+    }
   };
 
   const removeFile = (id) => {

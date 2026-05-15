@@ -42,15 +42,22 @@ export default function BrainTumor() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await axios.post('http://127.0.0.1:8000/predict-brain-tumor', formData, {
+      // Update to new endpoint
+      const res = await axios.post('http://127.0.0.1:8000/predict/mri', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000,
       });
       setResult(res.data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Brain tumor prediction service is not available yet.');
+      setError(err.response?.data?.detail || 'Brain tumor prediction service is currently unavailable.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (result && result.pdf_url) {
+      window.open(`http://127.0.0.1:8000${result.pdf_url}`, '_blank');
     }
   };
 
@@ -64,8 +71,8 @@ export default function BrainTumor() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Brain Tumor Detection</h1>
-        <p className={`text-sm mt-1 ${muted}`}>Upload an MRI scan for AI-powered tumor classification</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Brain Tumor Detection AI</h1>
+        <p className={`text-sm mt-1 ${muted}`}>Upload an MRI scan for production-ready tumor classification and report generation</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,7 +87,7 @@ export default function BrainTumor() {
               onDrop={handleDrop}
               className={`relative border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center transition-colors ${
                 isDragging
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
                   : isLight ? 'border-gray-300 hover:border-gray-400' : 'border-slate-700 hover:border-slate-600'
               }`}
             >
@@ -115,7 +122,7 @@ export default function BrainTumor() {
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  <><Loader2 size={18} className="animate-spin" /> Analyzing...</>
+                  <><Loader2 size={18} className="animate-spin" /> Analyzing Scan...</>
                 ) : (
                   <><Brain size={18} /> Analyze MRI Scan</>
                 )}
@@ -126,13 +133,13 @@ export default function BrainTumor() {
 
         {/* Results Section */}
         <div className={`${card} rounded-xl p-6`}>
-          <h2 className={`text-sm font-semibold mb-4 ${isLight ? 'text-gray-800' : 'text-white'}`}>Analysis Results</h2>
+          <h2 className={`text-sm font-semibold mb-4 ${isLight ? 'text-gray-800' : 'text-white'}`}>AI Analysis Report</h2>
 
           {!result && !error && (
             <div className="flex flex-col items-center justify-center py-16">
               <Brain size={48} className={`mb-4 ${muted}`} />
               <p className={`text-sm ${muted} text-center`}>
-                Upload an MRI scan to start analysis
+                Upload an MRI scan to start the analysis pipeline
               </p>
             </div>
           )}
@@ -150,37 +157,69 @@ export default function BrainTumor() {
           )}
 
           {result && (
-            <div className="space-y-4">
-              <div className={`p-4 rounded-xl flex items-center gap-3 ${
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className={`p-4 rounded-xl flex items-center justify-between ${
                 isLight ? 'bg-emerald-50 border border-emerald-200' : 'bg-emerald-500/10 border border-emerald-500/20'
               }`}>
-                <CheckCircle2 size={20} className="text-emerald-500" />
-                <p className={`text-sm font-semibold ${isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
-                  Analysis Complete
-                </p>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 size={20} className="text-emerald-500" />
+                  <p className={`text-sm font-semibold ${isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
+                    Scan Analysis Successful
+                  </p>
+                </div>
+                {result.pdf_url && (
+                  <button 
+                    onClick={handleDownloadPDF}
+                    className="text-xs font-bold text-indigo-600 hover:underline"
+                  >
+                    Download PDF
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3">
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>Classification</p>
-                  <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                    {result.prediction || result.classification || 'N/A'}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>Confidence</p>
-                  <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                    {result.confidence ? `${(result.confidence * 100).toFixed(1)}%` : 'N/A'}
-                  </p>
-                </div>
-                {result.report && (
+                <div className="grid grid-cols-2 gap-3">
                   <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                    <p className={`text-xs ${muted} mb-1`}>AI Report</p>
-                    <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
-                      {result.report}
+                    <p className={`text-xs ${muted} mb-1`}>Classification</p>
+                    <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                      {result.prediction}
                     </p>
                   </div>
-                )}
+                  <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
+                    <p className={`text-xs ${muted} mb-1`}>Confidence</p>
+                    <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
+                      {result.confidence}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
+                  <p className={`text-xs ${muted} mb-1`}>Risk Level</p>
+                  <p className={`text-sm font-bold ${result.risk_level === 'High' ? 'text-red-500' : result.risk_level === 'Moderate' ? 'text-orange-500' : 'text-emerald-500'}`}>
+                    {result.risk_level} Urgency: {result.urgency}
+                  </p>
+                </div>
+
+                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
+                  <p className={`text-xs ${muted} mb-1`}>AI Findings</p>
+                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
+                    {result.report}
+                  </p>
+                </div>
+
+                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
+                  <p className={`text-xs ${muted} mb-1`}>Doctor Suggestions</p>
+                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
+                    {result.suggestions}
+                  </p>
+                </div>
+
+                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
+                  <p className={`text-xs ${muted} mb-1`}>Health Recommendations</p>
+                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
+                    {result.recommendations}
+                  </p>
+                </div>
               </div>
             </div>
           )}
