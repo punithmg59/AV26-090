@@ -5,7 +5,7 @@ def validate_report_content(report, original_input):
     if not isinstance(report, dict):
         return False, "Report is not a valid dictionary"
         
-    required_keys = ["what_happened", "why_happened", "recommendations", "urgency_level"]
+    required_keys = ["what_happened", "why_happened", "next_steps", "urgency_level"]
     if not all(key in report for key in required_keys):
         return False, "Missing required keys in report"
         

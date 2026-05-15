@@ -14,14 +14,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useNavigate } from 'react-router-dom';
-import { uploadXray } from '../services/xrayApi';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
 const recentFiles = [
-  { id: 1, name: 'brain_mri_scan.pdf', size: '2.4 MB', type: 'MRI', date: '2 hours ago', status: 'completed' },
+  { id: 1, name: 'chest_xray_scan.pdf', size: '2.4 MB', type: 'X-Ray', date: '2 hours ago', status: 'completed' },
   { id: 2, name: 'blood_report_may.pdf', size: '1.2 MB', type: 'Lab', date: '5 hours ago', status: 'completed' },
   { id: 3, name: 'chest_xray.jpg', size: '4.8 MB', type: 'X-Ray', date: 'Yesterday', status: 'completed' },
 ];
@@ -64,52 +63,36 @@ export default function DocumentUploader({ onFilesSelected }) {
     }));
     
     setFiles(prev => [...prev, ...processedFiles]);
-    if (onFilesSelected) onFilesSelected(newFiles);
 
+    // Simulate upload progress
     for (const fileObj of processedFiles) {
-      try {
-        // Only process X-ray images for now
-        const isImage = fileObj.originalFile.type.startsWith('image/');
-        
-        if (isImage) {
-          // Actual upload to AI backend
-          const result = await uploadXray(fileObj.originalFile);
-          
-          setFiles(prev => prev.map(f => f.id === fileObj.id ? { 
-            ...f, 
-            progress: 100, 
-            status: 'completed' 
-          } : f));
-
-          // Navigate to report page with result
-          setTimeout(() => {
-            navigate('/report', { state: { result: {
-              ...result,
-              type: 'xray' // Mark as X-ray for PredictionReport
-            } } });
-          }, 800);
-        } else {
-          // Simulated progress for non-image files
-          let prog = 0;
-          const interval = setInterval(() => {
-            prog += 20;
-            if (prog >= 100) {
-              setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f));
-              clearInterval(interval);
-            } else {
-              setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, progress: prog } : f));
+      let prog = 0;
+      const interval = setInterval(() => {
+        prog += 20;
+        if (prog >= 100) {
+          setFiles(prev => {
+            const next = prev.map(f => f.id === fileObj.id ? { ...f, progress: 100, status: 'completed' } : f);
+            if (onFilesSelected) {
+              onFilesSelected(next.filter(f => f.status === 'completed').map(f => f.originalFile));
             }
-          }, 300);
+            return next;
+          });
+          clearInterval(interval);
+        } else {
+          setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, progress: prog } : f));
         }
-      } catch (error) {
-        console.error("Upload failed for", fileObj.name, error);
-        setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: 'error', error: error.detail } : f));
-      }
+      }, 200);
     }
   };
 
   const removeFile = (id) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles(prev => {
+      const next = prev.filter(f => f.id !== id);
+      if (onFilesSelected) {
+        onFilesSelected(next.filter(f => f.status === 'completed').map(f => f.originalFile));
+      }
+      return next;
+    });
   };
 
   return (
@@ -123,7 +106,7 @@ export default function DocumentUploader({ onFilesSelected }) {
               </div>
               Upload Medical Documents
             </h2>
-            <p className="text-sm text-slate-400 mt-1">Add MRI, X-Ray, or blood reports for AI analysis</p>
+            <p className="text-sm text-slate-400 mt-1">Add X-Ray or blood reports for AI analysis</p>
           </div>
         </div>
 

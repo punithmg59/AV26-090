@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 import logging
 import traceback
@@ -103,7 +104,7 @@ async def process_chest_xray(file: UploadFile):
                 risk_level=risk_level,
                 image_path=image_path,
                 heatmap_path=final_heatmap_path,
-                report=str(report_json)
+                report=json.dumps(report_json) if report_json else "{}"
             )
             db.add(db_record)
             db.commit()

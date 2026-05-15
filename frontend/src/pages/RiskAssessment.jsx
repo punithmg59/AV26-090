@@ -28,15 +28,39 @@ export default function RiskAssessment() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
-    setLoading(true);
     setError(null);
+
+    // Validation
+    if (uploadedFiles.length === 0) {
+      setError("Please upload a medical document (X-Ray or Blood Report).");
+      return;
+    }
+
+    if (selectedAreas.length === 0) {
+      setError("Please select at least one pain area on the body model.");
+      return;
+    }
+
+    if (!formData.age || !formData.trestbps || !formData.chol || !formData.thalach) {
+      setError("Please fill all required clinical information (Age, BP, Cholesterol, Heart Rate).");
+      return;
+    }
+
+    setLoading(true);
     try {
       const payload = new FormData();
       for (const key in formData) {
         payload.append(key, Number(formData[key]));
       }
       payload.append('pain_areas', JSON.stringify(selectedAreas));
-      uploadedFiles.forEach((file) => payload.append('documents', file));
+      
+      // If we are appending multiple files, we should use the actual file object
+      uploadedFiles.forEach((file) => {
+        // If file is an object with originalFile property (from our DocumentUploader)
+        // or just a regular File object.
+        const actualFile = file.originalFile ? file.originalFile : file;
+        payload.append('documents', actualFile);
+      });
 
       const response = await predictHeart(payload);
       navigate('/report', { state: { result: response.data } });
@@ -50,8 +74,8 @@ export default function RiskAssessment() {
   return (
     <div className="max-w-[1600px] mx-auto space-y-6">
       <div>
-        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Heart Disease Assessment</h1>
-        <p className={`text-sm mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>Enter your health data for AI-powered cardiac risk prediction</p>
+        <h1 className={`text-2xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>Disease Assessment</h1>
+        <p className={`text-sm mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>Upload medical documents for AI-powered disease analysis</p>
       </div>
 
       {/* Upload Section */}

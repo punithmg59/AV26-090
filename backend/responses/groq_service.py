@@ -29,15 +29,19 @@ def generate_medical_report(report_input):
     Data:
     {json.dumps(report_input, indent=2)}
     
-    Return ONLY a JSON object with these keys:
-    - what_happened (String: clear explanation of the prediction)
-    - why_happened (String: potential causes based strictly on the finding)
-    - recommendations (List of strings: 3 actionable next steps)
-    - urgency_level (String: Routine, Urgent, or Emergency based on risk_level)
+    Return ONLY a JSON object with these exact keys:
+    - what_happened (String: clear, detailed explanation of the prediction and what the AI detected)
+    - why_happened (String: potential causes, risk factors, or clinical interpretations based strictly on the finding)
+    - next_steps (List of strings: 3-4 actionable next steps for the patient)
+    - doctor_recommendations (List of strings: 2-3 specific types of specialists to consult and why. e.g. "Cardiologist - To evaluate heart rhythms.")
+    - health_suggestions (List of strings: 3-4 lifestyle, dietary, or general health tips relevant to the diagnosis)
+    - urgency_level (String: Routine, Moderate, Urgent, or Critical based on risk_level)
+    - tumor_spot (String: Provide a medically plausible estimated location/spot of the tumor in the brain if the prediction is a brain tumor. E.g., 'Frontal Lobe' or 'Meninges'. If no tumor is detected, return 'N/A')
+    - tumor_size (String: Provide a medically plausible estimated size range of the tumor if it is a brain tumor. E.g., '1.5 - 2.5 cm' or 'Small'. If no tumor is detected, return 'N/A')
     """
     
     payload = {
-        "model": "llama3-8b-8192",
+        "model": "llama-3.1-8b-instant",
         "messages": [
             {"role": "system", "content": "You are a precise AI medical assistant that outputs strictly valid JSON without markdown formatting."},
             {"role": "user", "content": prompt}
@@ -80,11 +84,22 @@ def generate_fallback_report(report_input):
         
     return {
         "what_happened": f"The AI analysis indicates a classification of {prediction}.",
-        "why_happened": "This is based on visual patterns detected in the uploaded X-ray.",
-        "recommendations": [
+        "why_happened": "This is based on visual patterns detected in the uploaded scan or provided health data.",
+        "next_steps": [
             "Consult with a licensed radiologist or physician for a definitive diagnosis.",
-            "Bring this preliminary report to your next medical appointment.",
-            "Monitor for any physical symptoms like chronic cough or shortness of breath."
+            "Bring this preliminary AI report to your next medical appointment.",
+            "Monitor for any physical symptoms or changes in health condition."
         ],
-        "urgency_level": urgency
+        "doctor_recommendations": [
+            "Primary Care Physician - For initial evaluation and referrals.",
+            "Specialist - Depending on the exact diagnosis, seek out an appropriate specialist."
+        ],
+        "health_suggestions": [
+            "Maintain a healthy, balanced diet.",
+            "Ensure adequate hydration and sleep.",
+            "Avoid strenuous activities if feeling unwell."
+        ],
+        "urgency_level": urgency,
+        "tumor_spot": "Unspecified Region" if "Tumor" in prediction or prediction not in ["NORMAL", "notumor"] else "N/A",
+        "tumor_size": "Pending Clinical Evaluation" if "Tumor" in prediction or prediction not in ["NORMAL", "notumor"] else "N/A"
     }

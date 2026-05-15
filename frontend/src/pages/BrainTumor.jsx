@@ -1,9 +1,11 @@
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Brain, Upload, X, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import useStore from '../store/useStore';
 import axios from 'axios';
 
 export default function BrainTumor() {
+  const navigate = useNavigate();
   const { theme } = useStore();
   const isLight = theme === 'light';
   const [file, setFile] = useState(null);
@@ -43,21 +45,16 @@ export default function BrainTumor() {
       const formData = new FormData();
       formData.append('file', file);
       // Update to new endpoint
-      const res = await axios.post('http://127.0.0.1:8000/predict/mri', formData, {
+      const res = await axios.post('http://127.0.0.1:8000/api/brain/predict', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000,
       });
-      setResult(res.data);
+      // Navigate to the unified professional report page
+      navigate('/report', { state: { result: { ...res.data, type: 'mri' } } });
     } catch (err) {
       setError(err.response?.data?.detail || 'Brain tumor prediction service is currently unavailable.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    if (result && result.pdf_url) {
-      window.open(`http://127.0.0.1:8000${result.pdf_url}`, '_blank');
     }
   };
 
@@ -75,9 +72,9 @@ export default function BrainTumor() {
         <p className={`text-sm mt-1 ${muted}`}>Upload an MRI scan for production-ready tumor classification and report generation</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="max-w-2xl mx-auto mt-10">
         {/* Upload Section */}
-        <div className={`${card} rounded-xl p-6`}>
+        <div className={`${card} rounded-xl p-8`}>
           <h2 className={`text-sm font-semibold mb-4 ${isLight ? 'text-gray-800' : 'text-white'}`}>Upload MRI Scan</h2>
 
           {!preview ? (
@@ -131,99 +128,18 @@ export default function BrainTumor() {
           )}
         </div>
 
-        {/* Results Section */}
-        <div className={`${card} rounded-xl p-6`}>
-          <h2 className={`text-sm font-semibold mb-4 ${isLight ? 'text-gray-800' : 'text-white'}`}>AI Analysis Report</h2>
-
-          {!result && !error && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Brain size={48} className={`mb-4 ${muted}`} />
-              <p className={`text-sm ${muted} text-center`}>
-                Upload an MRI scan to start the analysis pipeline
-              </p>
+        {error && (
+          <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 ${
+            isLight ? 'bg-red-50 border border-red-200' : 'bg-red-500/10 border border-red-500/20'
+          }`}>
+            <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className={`text-sm font-medium ${isLight ? 'text-red-800' : 'text-red-400'}`}>Analysis Error</p>
+              <p className={`text-xs mt-1 ${isLight ? 'text-red-600' : 'text-red-400/80'}`}>{error}</p>
             </div>
-          )}
+          </div>
+        )}
 
-          {error && (
-            <div className={`p-4 rounded-xl flex items-start gap-3 ${
-              isLight ? 'bg-red-50 border border-red-200' : 'bg-red-500/10 border border-red-500/20'
-            }`}>
-              <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className={`text-sm font-medium ${isLight ? 'text-red-800' : 'text-red-400'}`}>Analysis Error</p>
-                <p className={`text-xs mt-1 ${isLight ? 'text-red-600' : 'text-red-400/80'}`}>{error}</p>
-              </div>
-            </div>
-          )}
-
-          {result && (
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              <div className={`p-4 rounded-xl flex items-center justify-between ${
-                isLight ? 'bg-emerald-50 border border-emerald-200' : 'bg-emerald-500/10 border border-emerald-500/20'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={20} className="text-emerald-500" />
-                  <p className={`text-sm font-semibold ${isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
-                    Scan Analysis Successful
-                  </p>
-                </div>
-                {result.pdf_url && (
-                  <button 
-                    onClick={handleDownloadPDF}
-                    className="text-xs font-bold text-indigo-600 hover:underline"
-                  >
-                    Download PDF
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                    <p className={`text-xs ${muted} mb-1`}>Classification</p>
-                    <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                      {result.prediction}
-                    </p>
-                  </div>
-                  <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                    <p className={`text-xs ${muted} mb-1`}>Confidence</p>
-                    <p className={`text-lg font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>
-                      {result.confidence}%
-                    </p>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>Risk Level</p>
-                  <p className={`text-sm font-bold ${result.risk_level === 'High' ? 'text-red-500' : result.risk_level === 'Moderate' ? 'text-orange-500' : 'text-emerald-500'}`}>
-                    {result.risk_level} Urgency: {result.urgency}
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>AI Findings</p>
-                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
-                    {result.report}
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>Doctor Suggestions</p>
-                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
-                    {result.suggestions}
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-xl ${isLight ? 'bg-gray-50' : 'bg-slate-800/50'}`}>
-                  <p className={`text-xs ${muted} mb-1`}>Health Recommendations</p>
-                  <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-700' : 'text-slate-300'}`}>
-                    {result.recommendations}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

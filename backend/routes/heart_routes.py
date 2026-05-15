@@ -329,7 +329,36 @@ async def predict_heart_multimodal(
         
         if documents:
             for document in documents:
-                if document.filename:
+                    # Detect document type dynamically
+                    filename_lower = document.filename.lower()
+                    document_type = "blood_report"
+                    if "xray" in filename_lower or "x-ray" in filename_lower:
+                        document_type = "xray"
+                    elif "ct" in filename_lower or "scan" in filename_lower:
+                        document_type = "ctscan"
+                    
+                    print(f"Document type: {document_type}")
+                    
+                    # If it's an X-Ray or CT Scan, we MUST route it to the image AI pipeline
+                    if document_type in ["xray", "ctscan"]:
+                        from services.xray_service import process_chest_xray
+                        
+                        # Reset the file cursor so process_chest_xray can read it
+                        await document.seek(0)
+                        
+                        print("Routing to Image AI Pipeline...")
+                        xray_result = await process_chest_xray(document)
+                        
+                        print("Prediction:", xray_result.get("prediction"))
+                        print("Confidence:", xray_result.get("confidence"))
+                        print("Generated report:", xray_result.get("report"))
+                        
+                        xray_result["type"] = "xray"
+                        
+                        # The process_chest_xray returns the exact structure expected by the frontend PredictionReport
+                        # We just return it directly and short-circuit the tabular heart pipeline
+                        return xray_result
+
                     # Validate file
                     file_ext = Path(document.filename).suffix.lower()
                     if file_ext not in SUPPORTED_EXTENSIONS:
@@ -591,6 +620,10 @@ async def predict_heart_multimodal(
             # Symptoms and Pain Areas
             "symptoms": reasons,
             "selected_pain_areas": pain_areas_list,
+            
+            # Biometrics for frontend rendering
+            "blood_pressure": f"{ocr_extracted_data.get('trestbps', trestbps)}/{ocr_extracted_data.get('bp_diastolic', 'N/A')}",
+            "heart_rate": ocr_extracted_data.get('thalach', thalach),
             
             # AI Generated Report
             "llm_report": gemini_report,

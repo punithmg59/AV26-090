@@ -11,6 +11,7 @@ from routes.heart_routes import router as heart_router
 from routes.history_routes import router as history_router
 from routes.analytics_routes import router as analytics_router
 from routes.xray_routes import router as xray_router
+from routes.brain_routes import router as brain_router
 
 
 app = FastAPI(
@@ -19,6 +20,8 @@ app = FastAPI(
 )
 
 # Mount Static Files for images/heatmaps
+import os
+os.makedirs("uploads/mri", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
@@ -42,6 +45,7 @@ app.include_router(heart_router)
 app.include_router(history_router)
 app.include_router(analytics_router)
 app.include_router(xray_router)
+app.include_router(brain_router)
 
 
 # =========================
